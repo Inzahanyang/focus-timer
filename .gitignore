@@ -1,0 +1,20 @@
+# Node
+node_modules/
+dist/
+*.local
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+backend/instance/
+.pytest_cache/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+*.log

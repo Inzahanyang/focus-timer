@@ -1,0 +1,60 @@
+/* ============================================================
+   Focus Atlas — design tokens
+   Three modes swapped via <html data-mode="paper|focus|break">.
+   Source of truth: docs/DESIGN_SYSTEM.md
+   ============================================================ */
+
+:root {
+  /* paper — default: warm gray paper, ink text */
+  --bg: #f4f2ec;
+  --surface: #fbfaf6;
+  --text: #1c1d19;
+  --muted: #71736a;
+  --line: #ddd9cd;
+  --contour: #3c4656;
+  --contour-faint: rgba(60, 70, 86, 0.14);
+  --danger: #9a4433;
+
+  /* subject palette — geological specimens (assigned by subject.id % 8) */
+  --geo-1: #4a5b6e; /* slate */
+  --geo-2: #a97e3f; /* ochre */
+  --geo-3: #66794e; /* moss */
+  --geo-4: #9a5a44; /* iron */
+  --geo-5: #8a6f5c; /* clay */
+  --geo-6: #55565e; /* basalt */
+  --geo-7: #7d8a6a; /* lichen */
+  --geo-8: #b1976b; /* sandstone */
+
+  /* type */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue',
+    Arial, sans-serif;
+  --track-label: 0.18em; /* uppercase micro-labels */
+
+  /* motion */
+  --t-fast: 180ms;
+  --t-mode: 450ms;
+
+  /* layout */
+  --radius: 10px;
+  --maxw: 1040px;
+}
+
+html[data-mode='focus'] {
+  --bg: #10151d;
+  --surface: #151b25;
+  --text: #e8e6df;
+  --muted: #8a919e;
+  --line: #262e3b;
+  --contour: #b7c6da;
+  --contour-faint: rgba(183, 198, 218, 0.12);
+}
+
+html[data-mode='break'] {
+  --bg: #e6ebe9;
+  --surface: #eef2f0;
+  --text: #333d3a;
+  --muted: #7c8683;
+  --line: #cfd8d4;
+  --contour: #7fa198;
+  --contour-faint: rgba(127, 161, 152, 0.18);
+}
