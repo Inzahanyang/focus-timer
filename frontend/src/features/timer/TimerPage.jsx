@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { formatClock } from '../../lib/formatters';
+import { formatClock, subjectColorVar } from '../../lib/formatters';
 import ContourRing from './ContourRing';
 import SubjectPicker from './SubjectPicker';
 import { FOCUS_SECONDS, isReady } from './timerMachine';
@@ -87,7 +87,7 @@ export default function TimerPage() {
           />
         </div>
 
-        <p className="timer-duration">25 minutes</p>
+        <p className="timer-duration">25-minute focus</p>
 
         {state.notice && NOTICE_COPY[state.notice] && (
           <p className="field-note" role="status">
@@ -103,7 +103,7 @@ export default function TimerPage() {
         <div className="timer-controls">
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-primary btn-lg"
             disabled={state.subjectId == null}
             onClick={start}
           >
@@ -135,6 +135,7 @@ export default function TimerPage() {
         paused={paused}
         label={ringLabel}
         valueNow={Math.round(ringProgress * 100)}
+        color={inBreak ? null : subjectColorVar(state.subjectId || 1)}
       >
         <span className="stage-subject">
           {inBreak ? 'BREAK' : state.subjectName}

@@ -12,7 +12,8 @@
   --muted: #71736a;
   --line: #ddd9cd;
   --contour: #3c4656;
-  --contour-faint: rgba(60, 70, 86, 0.14);
+  --contour-faint: rgba(60, 70, 86, 0.2);
+  --contour-track: rgba(60, 70, 86, 0.3);
   --danger: #9a4433;
 
   /* subject palette — geological specimens (assigned by subject.id % 8) */
@@ -46,7 +47,8 @@ html[data-mode='focus'] {
   --muted: #8a919e;
   --line: #262e3b;
   --contour: #b7c6da;
-  --contour-faint: rgba(183, 198, 218, 0.12);
+  --contour-faint: rgba(183, 198, 218, 0.18);
+  --contour-track: rgba(183, 198, 218, 0.28);
 }
 
 html[data-mode='break'] {
@@ -56,5 +58,6 @@ html[data-mode='break'] {
   --muted: #7c8683;
   --line: #cfd8d4;
   --contour: #7fa198;
-  --contour-faint: rgba(127, 161, 152, 0.18);
+  --contour-faint: rgba(127, 161, 152, 0.24);
+  --contour-track: rgba(127, 161, 152, 0.34);
 }

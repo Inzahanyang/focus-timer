@@ -122,6 +122,13 @@ export function TimerProvider({ onComplete, children }) {
     return () => clearTimeout(id);
   }, [state.overlay]);
 
+  // "Session cleared." is a moment, not a permanent fixture (design pass 2).
+  useEffect(() => {
+    if (state.notice !== 'reset') return undefined;
+    const id = setTimeout(() => rawDispatch({ type: 'CLEAR_NOTICE' }), 2600);
+    return () => clearTimeout(id);
+  }, [state.notice]);
+
   const value = { state, now, remaining, progress, dispatch };
   return (
     <TimerContext.Provider value={value}>{children}</TimerContext.Provider>

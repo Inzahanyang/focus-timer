@@ -262,6 +262,10 @@ export function reducer(state, event) {
       return { ...state, overlay: null };
     }
 
+    case 'CLEAR_NOTICE': {
+      return { ...state, notice: null };
+    }
+
     default:
       return state;
   }
