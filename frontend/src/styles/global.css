@@ -657,6 +657,132 @@ html[data-mode='break'] .contour {
   display: inline-block;
 }
 
+/* ---------- dashboard ---------- */
+
+.stat-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 14px;
+  margin: 0 0 6px;
+  font-size: 17px;
+  color: var(--muted);
+}
+
+.stat-item strong {
+  color: var(--text);
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  margin-right: 6px;
+}
+
+.stat-sep {
+  color: var(--line);
+}
+
+.stat-note {
+  margin: 0 0 40px;
+  font-size: 13px;
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.dash-section {
+  margin-bottom: 46px;
+}
+
+.dash-question {
+  margin: 0 0 2px;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.dash-caption {
+  margin: 0 0 18px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.chart-frame {
+  position: relative;
+}
+
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+/* terrain (ridgeline) */
+.terrain {
+  margin: 0;
+}
+
+.terrain-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.terrain-day {
+  fill: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.terrain-hour {
+  fill: var(--muted);
+  font-size: 10px;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.terrain-baseline {
+  stroke: var(--contour-faint);
+  stroke-width: 1;
+}
+
+.terrain-ridge {
+  fill: var(--contour);
+  fill-opacity: 0.16;
+  stroke: var(--contour);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+
+.terrain-forming {
+  text-align: center;
+  padding: 18px 0 6px;
+  color: var(--muted);
+}
+
+.terrain-forming strong {
+  display: block;
+  color: var(--text);
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.terrain-forming p {
+  margin: 0 0 16px;
+  font-size: 14px;
+}
+
+.terrain-forming .btn {
+  text-decoration: none;
+  display: inline-block;
+}
+
 /* ---------- dialog ---------- */
 
 .dialog-backdrop {

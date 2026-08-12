@@ -9,6 +9,8 @@ from .extensions import db
 def create_app(config_object=Config):
     app = Flask(__name__)
     app.config.from_object(config_object)
+    # Keep insertion order in JSON responses — by_weekday must read Mon..Sun.
+    app.json.sort_keys = False
 
     db.init_app(app)
 
@@ -26,11 +28,13 @@ def create_app(config_object=Config):
 
     from .routes.health import bp as health_bp
     from .routes.sessions import bp as sessions_bp
+    from .routes.stats import bp as stats_bp
     from .routes.subjects import bp as subjects_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(subjects_bp)
     app.register_blueprint(sessions_bp)
+    app.register_blueprint(stats_bp)
 
     register_error_handlers(app)
 
