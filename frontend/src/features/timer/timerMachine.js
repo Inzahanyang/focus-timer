@@ -70,7 +70,9 @@ function completeFocus(state, now, away) {
   const session = {
     subjectId: state.subjectId,
     subjectName: state.subjectName,
-    minutes: Math.round(state.durationSeconds / 60),
+    // Sub-minute demo sessions still record one honest minute — the API
+    // contract's duration unit is whole minutes (min 1).
+    minutes: Math.max(1, Math.round(state.durationSeconds / 60)),
     completionId: state.completionId,
     startedAt: state.startedAt,
     completedAt: focusEndAt,

@@ -26,6 +26,7 @@ def create_app(config_object=Config):
         methods=["GET", "POST", "DELETE", "PATCH", "OPTIONS"],
     )
 
+    from .routes.demo import bp as demo_bp
     from .routes.health import bp as health_bp
     from .routes.sessions import bp as sessions_bp
     from .routes.stats import bp as stats_bp
@@ -35,6 +36,7 @@ def create_app(config_object=Config):
     app.register_blueprint(subjects_bp)
     app.register_blueprint(sessions_bp)
     app.register_blueprint(stats_bp)
+    app.register_blueprint(demo_bp)
 
     register_error_handlers(app)
 

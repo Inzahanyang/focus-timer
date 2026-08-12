@@ -9,7 +9,7 @@ const SUGGESTIONS = ['Work', 'Reading', 'Study', 'Exercise'];
  * Subject selection before a session. Functional copy only —
  * "Select a subject", never "Choose a terrain" (PRODUCT_SPEC §3).
  */
-export default function SubjectPicker({ selectedId, onSelect }) {
+export default function SubjectPicker({ selectedId, onSelect, onLoaded }) {
   const [subjects, setSubjects] = useState(null); // null = loading
   const [loadError, setLoadError] = useState(null);
   const [adding, setAdding] = useState(false);
@@ -21,10 +21,14 @@ export default function SubjectPicker({ selectedId, onSelect }) {
   const load = () => {
     setLoadError(null);
     api('/subjects')
-      .then((data) => setSubjects(data))
+      .then((data) => {
+        setSubjects(data);
+        if (onLoaded) onLoaded(data);
+      })
       .catch((err) => setLoadError(err.message));
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, []);
 
   const createSubject = async (name) => {

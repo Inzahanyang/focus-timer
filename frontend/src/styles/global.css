@@ -783,6 +783,39 @@ html[data-mode='break'] .contour {
   display: inline-block;
 }
 
+/* ---------- demo ---------- */
+
+.demo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  max-width: var(--maxw);
+  width: calc(100% - 48px);
+  margin: 16px auto -8px;
+  padding: 8px 16px;
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.demo-banner-btn {
+  font-size: 13px;
+  padding: 5px 12px;
+}
+
+.demo-entry {
+  margin-top: 14px;
+  font-size: 14px;
+}
+
+.terrain-forming-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
 /* ---------- dialog ---------- */
 
 .dialog-backdrop {

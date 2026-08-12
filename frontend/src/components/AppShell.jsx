@@ -1,4 +1,5 @@
 import { NavLink, Outlet, Link } from 'react-router';
+import DemoBanner from '../features/demo/DemoBanner';
 import { useTimer } from '../features/timer/useTimer';
 
 // The completion notice lives in the shell, not in TimerPage: a session
@@ -11,7 +12,8 @@ function CompletionNotice() {
     <div className="completion" role="status">
       <div className="completion-title">A new contour has been added.</div>
       <div className="completion-meta">
-        {state.overlay.subjectName} · {state.overlay.minutes} minutes
+        {state.overlay.subjectName} · {state.overlay.minutes}{' '}
+        {state.overlay.minutes === 1 ? 'minute' : 'minutes'}
       </div>
     </div>
   );
@@ -32,6 +34,7 @@ export default function AppShell() {
           <NavLink to="/dashboard">Dashboard</NavLink>
         </nav>
       </header>
+      <DemoBanner />
       <main className="shell-main">
         <Outlet />
       </main>

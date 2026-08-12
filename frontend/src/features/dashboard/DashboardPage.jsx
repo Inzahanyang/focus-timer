@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { api } from '../../lib/apiClient';
 import { subjectColorVar } from '../../lib/formatters';
+import { isDemoLoaded, seedDemoAtlas } from '../demo/demoApi';
 import { listSessions } from '../timer/sessionApi';
 import FocusTerrain from './FocusTerrain';
 
@@ -161,9 +162,20 @@ export default function DashboardPage() {
           <div className="terrain-forming">
             <strong>Your map is still forming.</strong>
             <p>Complete three sessions to reveal your first pattern.</p>
-            <Link className="btn btn-primary" to="/">
-              Start a session
-            </Link>
+            <div className="terrain-forming-actions">
+              <Link className="btn btn-primary" to="/">
+                Start a session
+              </Link>
+              {!isDemoLoaded() && (
+                <button
+                  type="button"
+                  className="btn btn-quiet"
+                  onClick={() => seedDemoAtlas()}
+                >
+                  Explore a sample atlas
+                </button>
+              )}
+            </div>
           </div>
         )}
       </section>

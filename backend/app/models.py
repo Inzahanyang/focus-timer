@@ -42,6 +42,9 @@ class Subject(db.Model):
     color = db.Column(db.String(16), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
     archived_at = db.Column(db.DateTime, nullable=True)
+    # True only for subjects the demo seeder created — "Remove demo data"
+    # must never touch subjects the user made themselves.
+    is_demo = db.Column(db.Boolean, nullable=False, default=False)
 
     sessions = db.relationship("Session", backref="subject", lazy=True)
 

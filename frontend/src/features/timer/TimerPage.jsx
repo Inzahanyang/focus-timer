@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { isDemoLoaded, seedDemoAtlas } from '../demo/demoApi';
 import { formatClock, subjectColorVar } from '../../lib/formatters';
 import ContourRing from './ContourRing';
 import SubjectPicker from './SubjectPicker';
@@ -14,6 +15,34 @@ const NOTICE_COPY = {
 export default function TimerPage() {
   const { state, remaining, progress, dispatch } = useTimer();
   const { phase } = state;
+
+  const [hasSubjects, setHasSubjects] = useState(true); // optimistic
+  const [pickerKey, setPickerKey] = useState(0);
+  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoLoaded, setDemoLoaded] = useState(isDemoLoaded);
+
+  useEffect(() => {
+    const onChange = () => setDemoLoaded(isDemoLoaded());
+    window.addEventListener('focus-atlas:demo-changed', onChange);
+    return () =>
+      window.removeEventListener('focus-atlas:demo-changed', onChange);
+  }, []);
+
+  const onSubjectsLoaded = useCallback(
+    (subjects) => setHasSubjects(subjects.length > 0),
+    []
+  );
+
+  const exploreSample = async () => {
+    if (demoBusy) return;
+    setDemoBusy(true);
+    try {
+      await seedDemoAtlas();
+      setPickerKey((k) => k + 1); // picker refetches the seeded subjects
+    } finally {
+      setDemoBusy(false);
+    }
+  };
 
   const ready = isReady(phase);
   const inFocus = phase === 'running_focus' || phase === 'paused_focus';
@@ -62,7 +91,9 @@ export default function TimerPage() {
         </p>
 
         <SubjectPicker
+          key={pickerKey}
           selectedId={state.subjectId}
+          onLoaded={onSubjectsLoaded}
           onSelect={(subject) =>
             dispatch({
               type: 'SELECT_SUBJECT',
@@ -110,6 +141,35 @@ export default function TimerPage() {
             Begin focus
           </button>
         </div>
+
+        {/* Reviewer paths — always plainly labeled, never disguised. */}
+        {!hasSubjects && (
+          <button
+            type="button"
+            className="btn btn-quiet demo-entry"
+            disabled={demoBusy}
+            onClick={exploreSample}
+          >
+            {demoBusy ? 'Preparing sample atlas…' : 'Explore a sample atlas'}
+          </button>
+        )}
+        {demoLoaded && (
+          <button
+            type="button"
+            className="btn btn-quiet demo-entry"
+            disabled={state.subjectId == null}
+            onClick={() =>
+              dispatch({
+                type: 'START',
+                now: Date.now(),
+                durationSeconds: 10,
+                completionId: crypto.randomUUID(),
+              })
+            }
+          >
+            Try a 10-second demo session
+          </button>
+        )}
 
         <div className="sr-only" aria-live="polite">
           {announcement}
