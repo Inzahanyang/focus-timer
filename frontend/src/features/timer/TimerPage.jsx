@@ -94,7 +94,7 @@ export default function TimerPage() {
             {NOTICE_COPY[state.notice]}
           </p>
         )}
-        {state.save?.status === 'queued' && (
+        {state.outbox.some((item) => item.status === 'queued') && (
           <p className="field-note" role="status">
             Saved on this device — syncing.
           </p>
@@ -190,15 +190,6 @@ export default function TimerPage() {
           </button>
         )}
       </div>
-
-      {state.overlay && (
-        <div className="completion" role="status">
-          <div className="completion-title">A new contour has been added.</div>
-          <div className="completion-meta">
-            {state.overlay.subjectName} · {state.overlay.minutes} minutes
-          </div>
-        </div>
-      )}
 
       <div className="sr-only" aria-live="polite">
         {announcement}

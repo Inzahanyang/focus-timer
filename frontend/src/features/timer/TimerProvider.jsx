@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 import { TimerContext } from './timerContext';
 import {
@@ -67,24 +67,36 @@ export function TimerProvider({ onComplete, children }) {
     }
   }, [state.phase, remaining]);
 
-  // Save flow — independent of the timer phase; the break never waits.
-  // Duplicate requests are possible (StrictMode/reload); the server's
-  // idempotency key makes them harmless.
+  // Save flow — an outbox keyed by completionId, independent of the timer
+  // phase. Each item resolves on its own; a slow request never blocks the
+  // break or a later session's save. Duplicate requests remain possible
+  // (StrictMode remount/reload); the server's idempotency key absorbs them.
+  const inFlightRef = useRef(new Set());
   useEffect(() => {
-    if (!state.save || state.save.status !== 'pending') return undefined;
-    let cancelled = false;
-    Promise.resolve(onComplete ? onComplete(state.save.session) : null)
-      .then(() => {
-        if (!cancelled) rawDispatch({ type: 'SAVE_SUCCEEDED' });
-      })
-      .catch(() => {
-        if (!cancelled) rawDispatch({ type: 'SAVE_FAILED' });
+    state.outbox
+      .filter(
+        (item) =>
+          item.status === 'pending' &&
+          !inFlightRef.current.has(item.session.completionId)
+      )
+      .forEach((item) => {
+        const id = item.session.completionId;
+        inFlightRef.current.add(id);
+        Promise.resolve(onComplete ? onComplete(item.session) : null)
+          .then(() => rawDispatch({ type: 'SAVE_SUCCEEDED', completionId: id }))
+          .catch(() => rawDispatch({ type: 'SAVE_FAILED', completionId: id }))
+          .finally(() => inFlightRef.current.delete(id));
       });
-    return () => {
-      cancelled = true;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.save]);
+  }, [state.outbox]);
+
+  // Queued (failed) saves retry on load and whenever the network returns.
+  useEffect(() => {
+    rawDispatch({ type: 'RETRY_SAVES' });
+    const retry = () => rawDispatch({ type: 'RETRY_SAVES' });
+    window.addEventListener('online', retry);
+    return () => window.removeEventListener('online', retry);
+  }, []);
 
   // Persist every transition; idle-with-nothing-owed clears the record.
   useEffect(() => {

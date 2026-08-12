@@ -48,4 +48,16 @@
 
 **D21. 프로덕션 빌드는 API URL 누락 시 즉시 실패** — `import.meta.env.PROD && !VITE_API_BASE_URL`이면 throw. 배포된 페이지가 방문자의 localhost를 호출하는 사고 방지.
 
-**미해결(다음 마일스톤)**: 서버 멱등 완성(동시 POST), completed_at 정책(늦은 동기화 시 실제 완료시각), archived 과목의 진행 중 세션 정책, 마이그레이션 도입 여부, 테스트 스위트. Codex 감사 원문: 스크래치패드 `codex-audit-m0.md`.
+**미해결(다음 마일스톤)**: 서버 멱등 완성(동시 POST), completed_at 정책(늦은 동기화 시 실제 완료시각), archived 과목의 진행 중 세션 정책. Codex 감사 원문: 스크래치패드 `codex-audit-m0.md`.
+
+## 2026-08-12 (Codex 재검토 라운드 2 반영)
+
+**D22. 저장은 completionId로 식별되는 영속 outbox** — 단일 save 슬롯은 이전 저장이 미결인 채 다음 세션이 완료되면 유실됐다(재검토 BLOCKER). outbox 배열 + SAVE_SUCCEEDED/FAILED에 completionId 포함 + in-flight ID 추적. 재시도는 로드 시·online 이벤트·RETRY_SAVES로.
+
+**D23. 만료는 모든 사용자 명령을 이긴다 — 완전하게** — 만료 후 RESET도 완료 전이(오버레이+휴식)를 그대로 낸다. 휴식 만료 직후 PAUSE는 BREAK_ELAPSED로 — 00:00 정지 상태 불가. 경계(만료 ±1ms) 리듀서 표 테스트로 고정.
+
+**D24. 완료 알림은 셸 전역** — TimerPage가 아니라 AppShell에서 렌더. History/Dashboard에서 완료돼도 알림이 보인다.
+
+**D25. 저장 스키마 v2, v1은 마이그레이션 없이 폐기** — 배포 전이고 실사용자가 없어(테스트 브라우저뿐) v1→v2 변환 코드를 넣지 않는다. **v2부터는 스키마 변경 시 마이그레이션 필수.** 같은 원칙으로 DB도 배포 전에는 재생성, 첫 배포 전에 Flask-Migrate 도입 여부 결정.
+
+**D26. 리듀서는 vitest로 고정** — 재검토마다 리듀서 엣지가 나와서 순수 함수 계층에 표 테스트 20개 도입(만료 경계, outbox 격리, anchor, reconcile). `npm test`.

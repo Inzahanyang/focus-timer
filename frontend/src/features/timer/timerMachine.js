@@ -1,15 +1,16 @@
 // Focus Atlas timer state machine.
 //
-// Two invariants (DECISIONS D3, Codex audit round 1):
+// Invariants (DECISIONS D3, D16, D22, Codex audit rounds 1–2):
 //   1. Displayed time is DERIVED from absolute wall-clock timestamps.
 //      `endAt` is the truth while running; `remainingMs` while paused.
 //      Intervals only repaint.
 //   2. The timer phase and the save lifecycle are INDEPENDENT. Focus
-//      completion starts the break immediately; saving happens alongside
-//      and may fail/retry without ever blocking the timer.
+//      completion starts the break immediately; saving happens through a
+//      persistent OUTBOX keyed by completionId — a slow or failed save can
+//      never block the timer or be overwritten by the next completion.
+//   3. Once a period has expired, completion beats any user command.
 //
-// All transitions are pure. Invalid events are ignored, which makes
-// completion exactly-once at the machine level.
+// All transitions are pure. Invalid events are ignored.
 
 export const FOCUS_SECONDS = 25 * 60;
 export const BREAK_SECONDS = 5 * 60;
@@ -29,9 +30,9 @@ export const initialState = {
   pausedSeconds: 0,
   pauseStartedAt: null,
   completionId: null, // UUID minted at START; becomes the idempotency key
-  // Save lifecycle, independent from the phase.
-  // null | { session, status: 'pending' | 'queued' }
-  save: null,
+  // Persistent outbox: every completed session lives here until its save
+  // is confirmed. [{ session, status: 'pending' | 'queued' }]
+  outbox: [],
   // Completion overlay payload: { subjectName, minutes } | null
   overlay: null,
   // One quiet status line: 'reset' | 'away' | 'break_finished' | null
@@ -60,7 +61,8 @@ export function isReady(phase) {
 
 /**
  * Focus finished: enter the break immediately (anchored at the theoretical
- * focus end, not "now") and record the session for saving. Never blocks.
+ * focus end, not "now") and append the session to the outbox. Never blocks,
+ * never overwrites an earlier unsaved session.
  */
 function completeFocus(state, now, away) {
   const focusEndAt = state.endAt;
@@ -78,7 +80,7 @@ function completeFocus(state, now, away) {
   };
   const base = {
     ...state,
-    save: { session, status: 'pending' },
+    outbox: [...state.outbox, { session, status: 'pending' }],
     overlay: { subjectName: state.subjectName, minutes: session.minutes },
     notice: away ? 'away' : null,
     pauseStartedAt: null,
@@ -99,6 +101,9 @@ function completeFocus(state, now, away) {
 
 const focusExpired = (state, now) =>
   state.phase === 'running_focus' && now >= state.endAt;
+
+const breakExpired = (state, now) =>
+  state.phase === 'running_break' && now >= state.endAt;
 
 export function reducer(state, event) {
   switch (event.type) {
@@ -137,9 +142,12 @@ export function reducer(state, event) {
     }
 
     case 'PAUSE': {
-      // A pause pressed at/after expiry must not defeat completion.
+      // Expiry beats the command — for focus AND break (audit round 2).
       if (focusExpired(state, event.now)) {
         return completeFocus(state, event.now, false);
+      }
+      if (breakExpired(state, event.now)) {
+        return reducer(state, { type: 'BREAK_ELAPSED', now: event.now });
       }
       if (state.phase === 'running_focus' || state.phase === 'running_break') {
         return {
@@ -175,18 +183,18 @@ export function reducer(state, event) {
     }
 
     case 'RESET': {
-      // Reset never saves an incomplete session (assignment T3) — but if the
-      // focus had already expired, completion wins first, then we go idle.
-      let s = state;
-      if (focusExpired(s, event.now)) {
-        s = completeFocus(s, event.now, false);
+      // If the focus already expired, the session completed — the user gets
+      // the completion (overlay + break), not a silent discard.
+      if (focusExpired(state, event.now)) {
+        return completeFocus(state, event.now, false);
       }
+      // Reset never saves an incomplete session (assignment T3).
       return {
         ...initialState,
-        subjectId: s.subjectId,
-        subjectName: s.subjectName,
-        intention: s.intention,
-        save: s.save, // a pending save must survive a reset
+        subjectId: state.subjectId,
+        subjectName: state.subjectName,
+        intention: state.intention,
+        outbox: state.outbox, // unsaved completions survive a reset
         notice: 'reset',
       };
     }
@@ -197,13 +205,34 @@ export function reducer(state, event) {
     }
 
     case 'SAVE_SUCCEEDED': {
-      if (!state.save) return state;
-      return { ...state, save: null };
+      return {
+        ...state,
+        outbox: state.outbox.filter(
+          (item) => item.session.completionId !== event.completionId
+        ),
+      };
     }
 
     case 'SAVE_FAILED': {
-      if (!state.save) return state;
-      return { ...state, save: { ...state.save, status: 'queued' } };
+      return {
+        ...state,
+        outbox: state.outbox.map((item) =>
+          item.session.completionId === event.completionId
+            ? { ...item, status: 'queued' }
+            : item
+        ),
+      };
+    }
+
+    case 'RETRY_SAVES': {
+      // Dispatched on load, on the `online` event, or by a retry button.
+      if (!state.outbox.some((item) => item.status === 'queued')) return state;
+      return {
+        ...state,
+        outbox: state.outbox.map((item) =>
+          item.status === 'queued' ? { ...item, status: 'pending' } : item
+        ),
+      };
     }
 
     case 'BREAK_ELAPSED': {
@@ -241,10 +270,10 @@ export function reducer(state, event) {
 /** Reconcile a restored record against current wall-clock time. */
 export function reconcile(state, now) {
   if (!state) return initialState;
-  if (state.phase === 'running_focus' && now >= state.endAt) {
+  if (focusExpired(state, now)) {
     return completeFocus(state, now, true);
   }
-  if (state.phase === 'running_break' && now >= state.endAt) {
+  if (breakExpired(state, now)) {
     return reducer(state, { type: 'BREAK_ELAPSED', now });
   }
   return state;
