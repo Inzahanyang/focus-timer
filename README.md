@@ -48,4 +48,28 @@ cd frontend && npm test                 # 프론트엔드 (추가 예정)
 - Frontend: GitHub Pages — (배포 후 URL 기입)
 - Backend: Railway — (배포 후 URL 기입, `/health`로 확인)
 
-배포 절차·환경변수는 배포 시점에 이 섹션에 채운다.
+### 프론트엔드 (GitHub Pages)
+
+`main`에 push하면 `.github/workflows/deploy-pages.yml`이 lint → test → build → Pages 배포를 자동 실행한다.
+
+사전 설정 (1회):
+1. 리포 Settings → Pages → Source: **GitHub Actions**
+2. 리포 변수 설정: `VITE_API_BASE_URL` = Railway 백엔드 URL (https)
+   ```bash
+   gh variable set VITE_API_BASE_URL --body "https://<railway-domain>"
+   ```
+
+워크플로가 프로덕션 번들에 `localhost`가 남아 있으면 실패하도록 검사한다.
+
+### 백엔드 (Railway)
+
+1. railway.com → New Project → **Deploy from GitHub repo** → `focus-timer` 선택
+2. Settings → **Root Directory: `backend`** (railway.json이 gunicorn 시작·/health 헬스체크를 지정)
+3. 같은 프로젝트에 **PostgreSQL** 추가 → 백엔드 서비스 Variables에서 `DATABASE_URL`을 Postgres 참조로 연결
+4. 환경변수 추가:
+   ```text
+   ALLOWED_ORIGINS=https://inzahanyang.github.io
+   ```
+5. 배포 후 `https://<railway-domain>/health`가 `{"status":"ok","db":"ok"}`면 완료
+
+로컬 SQLite는 개발 전용이다. Railway에서 `DATABASE_URL`이 없으면 컨테이너 재배포 때 데이터가 사라지므로 Postgres 연결이 필수다.

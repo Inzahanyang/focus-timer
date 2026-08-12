@@ -3,12 +3,16 @@ import { getClientId, getTimezone } from './deviceIdentity';
 const configured = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
 // A production build without an API URL would make every visitor's browser
-// call http://localhost — fail the build-time misconfiguration loudly.
+// call http://localhost — fail the misconfiguration loudly.
 if (import.meta.env.PROD && !configured) {
   throw new Error('VITE_API_BASE_URL is required in production builds.');
 }
 
-const BASE_URL = configured || 'http://localhost:5001';
+// The ternary is statically folded per build: the localhost fallback is
+// dev-only and never survives into the production bundle (CI greps for it).
+const BASE_URL = import.meta.env.PROD
+  ? configured
+  : configured || 'http://localhost:5001';
 
 export class ApiError extends Error {
   constructor(status, code, message) {

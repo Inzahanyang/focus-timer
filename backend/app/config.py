@@ -10,6 +10,10 @@ def _database_url():
         # Railway/Heroku emit postgres://; SQLAlchemy needs postgresql://
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
+        # SQLAlchemy resolves bare postgresql:// to the legacy psycopg2
+        # driver; we ship psycopg 3 — pin the driver in the URL.
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
         return url
     instance_dir = BASE_DIR / "instance"
     instance_dir.mkdir(exist_ok=True)
