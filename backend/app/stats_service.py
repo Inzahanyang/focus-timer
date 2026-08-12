@@ -18,6 +18,7 @@ from datetime import timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
+from .insight_service import compute_insights
 from .models import Session
 from .time_utils import utc_bounds_for_range
 
@@ -97,4 +98,6 @@ def compute_stats(client_id, tz_name, now_utc):
         "sessions_this_week": sessions_this_week,
         "by_subject": by_subject,
         "by_weekday": by_weekday,
+        # Additive extension: Atlas Notes (deterministic, evidence-backed).
+        "insights": compute_insights(sessions, tz_name, now_utc, streak),
     }

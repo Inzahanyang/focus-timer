@@ -18,6 +18,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+ul,
+ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 button {
   font: inherit;
 }
@@ -781,6 +788,63 @@ html[data-mode='break'] .contour {
 .terrain-forming .btn {
   text-decoration: none;
   display: inline-block;
+}
+
+/* ---------- atlas note ---------- */
+
+.atlas-note {
+  border-top: 1px solid var(--line);
+  padding-top: 26px;
+  max-width: 560px;
+}
+
+.note-message {
+  margin: 12px 0 6px;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+}
+
+.note-evidence {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.note-action {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--text);
+  opacity: 0.75;
+}
+
+.note-secondary {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.note-secondary li {
+  font-size: 14.5px;
+  padding-left: 14px;
+  position: relative;
+}
+
+/* a small contour tick instead of a bullet */
+.note-secondary li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 7px;
+  height: 1.5px;
+  background: var(--contour);
+}
+
+.note-secondary-evidence {
+  color: var(--muted);
 }
 
 /* ---------- demo ---------- */

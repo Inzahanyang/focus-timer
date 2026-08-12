@@ -25,6 +25,32 @@ const tooltipStyle = {
   color: 'var(--text)',
 };
 
+/** Atlas Notes: the map's observation log. The onboarding note is skipped
+    here — the terrain's "still forming" block already says it. */
+function AtlasNotes({ insights }) {
+  const notes = (insights || []).filter((note) => note.type !== 'onboarding');
+  if (notes.length === 0) return null;
+  const [first, ...rest] = notes;
+  return (
+    <section className="dash-section atlas-note">
+      <h2 className="micro-label">Atlas Note</h2>
+      <p className="note-message">{first.message}</p>
+      <p className="note-evidence">{first.evidence}.</p>
+      {first.action && <p className="note-action">{first.action}</p>}
+      {rest.length > 0 && (
+        <ul className="note-secondary">
+          {rest.slice(0, 2).map((note) => (
+            <li key={note.type}>
+              <span>{note.message}</span>
+              <span className="note-secondary-evidence"> {note.evidence}.</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function ChartSection({ title, caption, children }) {
   return (
     <section className="dash-section">
@@ -264,6 +290,8 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </div>
       </ChartSection>
+
+      <AtlasNotes insights={stats.insights} />
     </div>
   );
 }
