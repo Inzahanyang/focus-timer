@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { api } from '../../lib/apiClient';
 import { subjectColorVar } from '../../lib/formatters';
 
@@ -15,6 +16,7 @@ export default function SubjectPicker({ selectedId, onSelect }) {
   const [newName, setNewName] = useState('');
   const [submitError, setSubmitError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   const load = () => {
     setLoadError(null);
@@ -42,6 +44,24 @@ export default function SubjectPicker({ selectedId, onSelect }) {
     }
   };
 
+  const removeSubject = async () => {
+    if (!pendingDelete || busy) return;
+    setBusy(true);
+    setSubmitError(null);
+    try {
+      await api(`/subjects/${pendingDelete.id}`, { method: 'DELETE' });
+      setSubjects((prev) => prev.filter((s) => s.id !== pendingDelete.id));
+      // A deleted subject can no longer be the selection.
+      if (selectedId === pendingDelete.id) onSelect({ id: null, name: null });
+      setPendingDelete(null);
+    } catch (err) {
+      setSubmitError(err.message);
+      setPendingDelete(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (loadError) {
     return (
       <div>
@@ -63,20 +83,29 @@ export default function SubjectPicker({ selectedId, onSelect }) {
     <div>
       <div className="subject-row" role="group" aria-label="Select a subject">
         {(isEmpty ? [] : subjects).map((subject) => (
-          <button
-            key={subject.id}
-            type="button"
-            className="chip"
-            aria-pressed={selectedId === subject.id}
-            onClick={() => onSelect(subject)}
-          >
-            <span
-              className="chip-dot"
-              style={{ background: subjectColorVar(subject.id) }}
-              aria-hidden="true"
-            />
-            {subject.name}
-          </button>
+          <span key={subject.id} className="chip-wrap">
+            <button
+              type="button"
+              className="chip"
+              aria-pressed={selectedId === subject.id}
+              onClick={() => onSelect(subject)}
+            >
+              <span
+                className="chip-dot"
+                style={{ background: subjectColorVar(subject.id) }}
+                aria-hidden="true"
+              />
+              {subject.name}
+            </button>
+            <button
+              type="button"
+              className="chip-x"
+              aria-label={`Delete subject ${subject.name}`}
+              onClick={() => setPendingDelete(subject)}
+            >
+              ×
+            </button>
+          </span>
         ))}
 
         {isEmpty &&
@@ -139,6 +168,16 @@ export default function SubjectPicker({ selectedId, onSelect }) {
       {submitError && <p className="field-error">{submitError}</p>}
       {isEmpty && !adding && (
         <p className="field-note">Create a subject to begin.</p>
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title={`Delete "${pendingDelete.name}"?`}
+          body="Completed sessions keep their record in History."
+          busy={busy}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={removeSubject}
+        />
       )}
     </div>
   );

@@ -92,10 +92,12 @@ class Session(db.Model):
 
     def to_dict(self):
         # Assignment contract fields; created_at maps to completion time (D7).
+        # `note` is an additive extension (the session's intention line).
         return {
             "id": self.id,
             "subject_id": self.subject_id,
             "subject_name": self.subject_name_snapshot,
             "duration": self.duration,
             "created_at": iso_utc(self.completed_at),
+            "note": self.note,
         }

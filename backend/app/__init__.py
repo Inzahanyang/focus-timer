@@ -25,10 +25,12 @@ def create_app(config_object=Config):
     )
 
     from .routes.health import bp as health_bp
+    from .routes.sessions import bp as sessions_bp
     from .routes.subjects import bp as subjects_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(subjects_bp)
+    app.register_blueprint(sessions_bp)
 
     register_error_handlers(app)
 
