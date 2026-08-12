@@ -43,10 +43,11 @@ cd frontend && npm test                 # 프론트엔드 (추가 예정)
 | `DECISIONS.md` | 기술·디자인 결정 기록 |
 | `AGENTS.md` / `CLAUDE.md` | 에이전트 협업 규칙 |
 
-## 배포
+## 배포 (라이브)
 
-- Frontend: GitHub Pages — (배포 후 URL 기입)
-- Backend: Railway — (배포 후 URL 기입, `/health`로 확인)
+- **Frontend**: https://inzahanyang.github.io/focus-timer/
+- **Backend**: https://api-production-2e44.up.railway.app ([/health](https://api-production-2e44.up.railway.app/health))
+- DB: Railway PostgreSQL — 재배포에도 데이터 유지 확인됨
 
 ### 프론트엔드 (GitHub Pages)
 
