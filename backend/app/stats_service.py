@@ -15,6 +15,7 @@ Definitions (assignment + master plan §9.7):
 """
 
 from datetime import timedelta, timezone
+from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
 from .models import Session
@@ -82,9 +83,17 @@ def compute_stats(client_id, tz_name, now_utc):
         streak += 1
         day = day - timedelta(days=1)
 
+    # Half-up rounding as product policy: 9 min reads 0.2h, not Python's
+    # banker's-rounded 0.1h (audit MINOR-1).
+    total_hours = float(
+        (Decimal(total_minutes) / Decimal(60)).quantize(
+            Decimal("0.1"), rounding=ROUND_HALF_UP
+        )
+    )
+
     return {
         "streak": streak,
-        "total_hours": round(total_minutes / 60, 1),
+        "total_hours": total_hours,
         "sessions_this_week": sessions_this_week,
         "by_subject": by_subject,
         "by_weekday": by_weekday,

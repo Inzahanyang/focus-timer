@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [weekSessions, setWeekSessions] = useState([]);
   const [error, setError] = useState(null);
+  const [terrainError, setTerrainError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -50,17 +51,26 @@ export default function DashboardPage() {
   useEffect(() => {
     const controller = new AbortController();
     setError(null);
-    Promise.all([
+    // The terrain request is an extension — its failure must never take
+    // down the required stats and charts (audit MAJOR-2).
+    Promise.allSettled([
       api('/stats', { signal: controller.signal }),
       listSessions({ range: 'week', signal: controller.signal }),
-    ])
-      .then(([statsData, sessions]) => {
-        setStats(statsData);
-        setWeekSessions(sessions);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(err.message);
-      });
+    ]).then(([statsResult, sessionsResult]) => {
+      if (controller.signal.aborted) return;
+      if (statsResult.status === 'rejected') {
+        setError(statsResult.reason?.message || 'Could not load statistics.');
+        return;
+      }
+      setStats(statsResult.value);
+      if (sessionsResult.status === 'fulfilled') {
+        setWeekSessions(sessionsResult.value);
+        setTerrainError(null);
+      } else {
+        setWeekSessions([]);
+        setTerrainError('The hourly terrain is temporarily unavailable.');
+      }
+    });
     return () => controller.abort();
   }, [reloadKey]);
 
@@ -84,8 +94,11 @@ export default function DashboardPage() {
 
   if (!stats) {
     return (
-      <div>
+      <div aria-busy="true">
         <h1 className="page-title">Your focus landscape</h1>
+        <p className="sr-only" role="status">
+          Loading dashboard statistics.
+        </p>
         <div className="strata-ghost" aria-hidden="true">
           <span className="ghost-line" style={{ width: '70%' }} />
           <span className="ghost-line" style={{ width: '52%' }} />
@@ -139,7 +152,11 @@ export default function DashboardPage() {
       <section className="dash-section">
         <h2 className="dash-question">This week's terrain</h2>
         <p className="dash-caption">Focused minutes by day and hour</p>
-        <FocusTerrain weekSessions={weekSessions} byWeekday={stats.by_weekday} />
+        {terrainError ? (
+          <p className="field-note">{terrainError}</p>
+        ) : (
+          <FocusTerrain weekSessions={weekSessions} />
+        )}
         {stillForming && (
           <div className="terrain-forming">
             <strong>Your map is still forming.</strong>

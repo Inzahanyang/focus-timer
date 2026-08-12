@@ -1,5 +1,12 @@
 import { useMemo } from 'react';
 import { subjectColorVar } from '../../lib/formatters';
+import {
+  BUCKETS_PER_DAY,
+  bucketize,
+  dayTotals,
+  smoothWeek,
+  weekBoundsLocal,
+} from './terrainMath';
 
 // The week's focus as terrain: seven ridges (Mon–Sun), each a smoothed
 // density curve of focused minutes across the 24 local hours. Built from
@@ -7,53 +14,17 @@ import { subjectColorVar } from '../../lib/formatters';
 // honest empty state (DESIGN_SYSTEM §6, design pass 2 directive #1).
 
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-const BUCKETS = 24;
 const VIEW_W = 720;
 const ROW_H = 34; // baseline spacing; ridges may rise into the row above
 const RIDGE_H = 44; // max ridge height above its baseline
 const PAD_X = 46;
 const PAD_TOP = RIDGE_H + 8;
 
-/** Distribute each session's minutes across the local hours it spanned. */
-function bucketize(sessions) {
-  const rows = Array.from({ length: 7 }, () => new Array(BUCKETS).fill(0));
-  const dominant = Array.from({ length: 7 }, () => new Map());
-  for (const session of sessions) {
-    const end = new Date(session.created_at);
-    const start = new Date(end.getTime() - session.duration * 60_000);
-    // walk hour boundaries between start and end
-    let cursor = start;
-    while (cursor < end) {
-      const hourEnd = new Date(cursor);
-      hourEnd.setMinutes(60, 0, 0);
-      const sliceEnd = hourEnd < end ? hourEnd : end;
-      const minutes = (sliceEnd - cursor) / 60_000;
-      const day = (cursor.getDay() + 6) % 7; // Mon=0
-      const hour = cursor.getHours();
-      rows[day][hour] += minutes;
-      const tally = dominant[day];
-      tally.set(
-        session.subject_id,
-        (tally.get(session.subject_id) || 0) + minutes
-      );
-      cursor = sliceEnd;
-    }
-  }
-  return { rows, dominant };
-}
-
-function smooth(values) {
-  return values.map((value, index) => {
-    const prev = values[(index - 1 + BUCKETS) % BUCKETS];
-    const next = values[(index + 1) % BUCKETS];
-    return (prev + value * 2 + next) / 4;
-  });
-}
-
 function ridgePath(values, baselineY, maxValue, innerWidth) {
-  const step = innerWidth / (BUCKETS - 1);
+  // Bucket centers: hour h sits at (h + 0.5)/24 — aligned with the hour
+  // labels which sit at exact h/24 positions.
   const points = values.map((value, index) => {
-    const x = PAD_X + index * step;
+    const x = PAD_X + ((index + 0.5) / BUCKETS_PER_DAY) * innerWidth;
     const y = baselineY - (maxValue > 0 ? (value / maxValue) * RIDGE_H : 0);
     return [x, y];
   });
@@ -69,17 +40,23 @@ function ridgePath(values, baselineY, maxValue, innerWidth) {
   return d;
 }
 
-export default function FocusTerrain({ weekSessions, byWeekday }) {
+export default function FocusTerrain({ weekSessions }) {
   const innerWidth = VIEW_W - PAD_X * 2;
   const height = PAD_TOP + ROW_H * 7 + 20;
 
-  const { paths, colors } = useMemo(() => {
-    const { rows, dominant } = bucketize(weekSessions);
-    const smoothed = rows.map(smooth);
-    const maxValue = Math.max(1, ...smoothed.flat());
+  const { paths, colors, totals } = useMemo(() => {
+    const { start, end } = weekBoundsLocal();
+    const { flat, dominant } = bucketize(weekSessions, start, end);
+    const smoothed = smoothWeek(flat);
+    const maxValue = Math.max(1, ...smoothed);
     return {
-      paths: smoothed.map((values, day) =>
-        ridgePath(values, PAD_TOP + ROW_H * (day + 1), maxValue, innerWidth)
+      paths: Array.from({ length: 7 }, (_, day) =>
+        ridgePath(
+          smoothed.slice(day * BUCKETS_PER_DAY, (day + 1) * BUCKETS_PER_DAY),
+          PAD_TOP + ROW_H * (day + 1),
+          maxValue,
+          innerWidth
+        )
       ),
       colors: dominant.map((tally) => {
         let best = null;
@@ -92,17 +69,21 @@ export default function FocusTerrain({ weekSessions, byWeekday }) {
         }
         return best != null ? subjectColorVar(best) : null;
       }),
+      totals: dayTotals(flat),
     };
   }, [weekSessions, innerWidth]);
 
+  // The summary describes the terrain's own buckets — not the server's
+  // completion-day attribution — so screen readers hear what is drawn.
   const summary = DAYS.map(
-    (day, index) => `${day} ${byWeekday?.[
-      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index]
-    ] ?? 0} minutes`
+    (day, index) => `${day} ${totals[index]} minutes`
   ).join(', ');
 
   return (
-    <figure className="terrain" aria-label={`This week's focus by day and hour: ${summary}`}>
+    <figure
+      className="terrain"
+      aria-label={`This week's focus by day and hour: ${summary}`}
+    >
       <svg
         className="terrain-svg"
         viewBox={`0 0 ${VIEW_W} ${height}`}
