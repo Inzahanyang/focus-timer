@@ -14,4 +14,7 @@ def health():
     except Exception:
         db_status = "error"
     status = "ok" if db_status == "ok" else "degraded"
-    return jsonify({"status": status, "db": db_status})
+    # 503 on DB failure so Railway's health check marks the deploy unhealthy.
+    return jsonify({"status": status, "db": db_status}), (
+        200 if db_status == "ok" else 503
+    )

@@ -9,6 +9,8 @@ export default function ContourRing({
   seed = 1,
   size = 340,
   paused = false,
+  label, // accessible meaning differs between focus and break
+  valueNow,
   children,
 }) {
   const half = size / 2;
@@ -33,8 +35,10 @@ export default function ContourRing({
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={Math.round(clamped * 100)}
-        aria-label={`Focus progress, ${Math.round(clamped * 100)} percent complete`}
+        aria-valuenow={valueNow != null ? valueNow : Math.round(clamped * 100)}
+        aria-label={
+          label || `Focus progress, ${Math.round(clamped * 100)} percent complete`
+        }
       >
         {/* Start the line at 12 o'clock. */}
         <g transform={`rotate(-90 ${half} ${half})`}>

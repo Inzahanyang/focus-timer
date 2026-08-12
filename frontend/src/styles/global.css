@@ -396,7 +396,7 @@ html[data-mode='break'] .contour {
   }
 }
 
-/* completion overlay — restrained, does not block the break */
+/* completion overlay — restrained, never blocks interaction underneath */
 .completion {
   position: fixed;
   inset: 0;
@@ -407,7 +407,21 @@ html[data-mode='break'] .contour {
   gap: 10px;
   background: var(--bg);
   z-index: 20;
+  pointer-events: none;
   animation: completion-in 400ms ease both;
+}
+
+/* visually hidden, available to screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .completion-title {

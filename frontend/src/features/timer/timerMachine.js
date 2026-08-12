@@ -1,62 +1,109 @@
 // Focus Atlas timer state machine.
 //
-// The single most important rule (DECISIONS D3): displayed time is DERIVED
-// from absolute wall-clock timestamps. `endAt` is the truth while running;
-// `remainingSeconds` is the truth while paused/idle. Intervals only repaint.
+// Two invariants (DECISIONS D3, Codex audit round 1):
+//   1. Displayed time is DERIVED from absolute wall-clock timestamps.
+//      `endAt` is the truth while running; `remainingMs` while paused.
+//      Intervals only repaint.
+//   2. The timer phase and the save lifecycle are INDEPENDENT. Focus
+//      completion starts the break immediately; saving happens alongside
+//      and may fail/retry without ever blocking the timer.
 //
-// All transitions are pure. Invalid events are ignored (return same state),
-// which is what makes completion exactly-once at the machine level: a second
-// FOCUS_ELAPSED simply finds the machine no longer in `running_focus`.
+// All transitions are pure. Invalid events are ignored, which makes
+// completion exactly-once at the machine level.
 
 export const FOCUS_SECONDS = 25 * 60;
 export const BREAK_SECONDS = 5 * 60;
 
 export const initialState = {
-  status: 'idle_focus',
-  // idle_focus | running_focus | paused_focus | saving_focus
+  phase: 'idle_focus',
+  // idle_focus | running_focus | paused_focus
   // running_break | paused_break | break_complete
   subjectId: null,
   subjectName: null,
   intention: '',
   durationSeconds: FOCUS_SECONDS,
   endAt: null, // ms epoch, only while running
-  remainingSeconds: FOCUS_SECONDS, // authoritative while paused/idle
-  startedAt: null, // ms epoch of focus start
+  remainingMs: FOCUS_SECONDS * 1000, // authoritative while paused/idle
+  startedAt: null,
   pauseCount: 0,
   pausedSeconds: 0,
   pauseStartedAt: null,
-  completionId: null, // UUID minted at START; the idempotency key
-  breakEndAt: null, // theoretical break end = focus endAt + 5 min
-  completedSession: null, // {subjectName, minutes} — drives the overlay
-  completedWhileAway: false,
+  completionId: null, // UUID minted at START; becomes the idempotency key
+  // Save lifecycle, independent from the phase.
+  // null | { session, status: 'pending' | 'queued' }
+  save: null,
+  // Completion overlay payload: { subjectName, minutes } | null
+  overlay: null,
+  // One quiet status line: 'reset' | 'away' | 'break_finished' | null
+  notice: null,
 };
 
-/** The derived truth. Call with Date.now() on every repaint. */
+/** Seconds to display. The only place time is computed. */
 export function deriveRemaining(state, now) {
-  if (state.status === 'running_focus' || state.status === 'running_break') {
+  if (state.phase === 'running_focus' || state.phase === 'running_break') {
     return Math.max(0, Math.ceil((state.endAt - now) / 1000));
   }
-  return state.remainingSeconds;
+  return Math.max(0, Math.ceil(state.remainingMs / 1000));
 }
 
-export function modeFor(status) {
-  if (
-    status === 'running_focus' ||
-    status === 'paused_focus' ||
-    status === 'saving_focus'
-  ) {
-    return 'focus';
-  }
-  if (status === 'running_break' || status === 'paused_break') return 'break';
+export function modeFor(phase) {
+  if (phase === 'running_focus' || phase === 'paused_focus') return 'focus';
+  if (phase === 'running_break' || phase === 'paused_break') return 'break';
   return 'paper';
 }
 
-const READY_STATUSES = ['idle_focus', 'break_complete'];
+const READY_PHASES = ['idle_focus', 'break_complete'];
+
+export function isReady(phase) {
+  return READY_PHASES.includes(phase);
+}
+
+/**
+ * Focus finished: enter the break immediately (anchored at the theoretical
+ * focus end, not "now") and record the session for saving. Never blocks.
+ */
+function completeFocus(state, now, away) {
+  const focusEndAt = state.endAt;
+  const breakEndAt = focusEndAt + BREAK_SECONDS * 1000;
+  const session = {
+    subjectId: state.subjectId,
+    subjectName: state.subjectName,
+    minutes: Math.round(state.durationSeconds / 60),
+    completionId: state.completionId,
+    startedAt: state.startedAt,
+    completedAt: focusEndAt,
+    pauseCount: state.pauseCount,
+    pausedSeconds: state.pausedSeconds,
+    intention: state.intention,
+  };
+  const base = {
+    ...state,
+    save: { session, status: 'pending' },
+    overlay: { subjectName: state.subjectName, minutes: session.minutes },
+    notice: away ? 'away' : null,
+    pauseStartedAt: null,
+    completionId: null,
+  };
+  if (now >= breakEndAt) {
+    // The break also elapsed while we were away — do not force a stale one.
+    return { ...base, phase: 'break_complete', endAt: null, remainingMs: 0 };
+  }
+  return {
+    ...base,
+    phase: 'running_break',
+    durationSeconds: BREAK_SECONDS,
+    endAt: breakEndAt,
+    remainingMs: breakEndAt - now,
+  };
+}
+
+const focusExpired = (state, now) =>
+  state.phase === 'running_focus' && now >= state.endAt;
 
 export function reducer(state, event) {
   switch (event.type) {
     case 'SELECT_SUBJECT': {
-      if (!READY_STATUSES.includes(state.status)) return state;
+      if (!isReady(state.phase)) return state;
       return {
         ...state,
         subjectId: event.subjectId,
@@ -65,48 +112,46 @@ export function reducer(state, event) {
     }
 
     case 'SET_INTENTION': {
-      if (!READY_STATUSES.includes(state.status)) return state;
+      if (!isReady(state.phase)) return state;
       return { ...state, intention: event.intention };
     }
 
     case 'START': {
-      if (!READY_STATUSES.includes(state.status)) return state;
+      if (!isReady(state.phase)) return state;
       if (state.subjectId == null) return state;
       const duration = event.durationSeconds || FOCUS_SECONDS;
       return {
         ...state,
-        status: 'running_focus',
+        phase: 'running_focus',
         durationSeconds: duration,
         startedAt: event.now,
         endAt: event.now + duration * 1000,
-        remainingSeconds: duration,
+        remainingMs: duration * 1000,
         pauseCount: 0,
         pausedSeconds: 0,
         pauseStartedAt: null,
         completionId: event.completionId,
-        breakEndAt: null,
-        completedSession: null,
-        completedWhileAway: false,
+        overlay: null,
+        notice: null,
       };
     }
 
     case 'PAUSE': {
-      if (state.status === 'running_focus') {
-        return {
-          ...state,
-          status: 'paused_focus',
-          remainingSeconds: deriveRemaining(state, event.now),
-          endAt: null,
-          pauseCount: state.pauseCount + 1,
-          pauseStartedAt: event.now,
-        };
+      // A pause pressed at/after expiry must not defeat completion.
+      if (focusExpired(state, event.now)) {
+        return completeFocus(state, event.now, false);
       }
-      if (state.status === 'running_break') {
+      if (state.phase === 'running_focus' || state.phase === 'running_break') {
         return {
           ...state,
-          status: 'paused_break',
-          remainingSeconds: deriveRemaining(state, event.now),
+          phase:
+            state.phase === 'running_focus' ? 'paused_focus' : 'paused_break',
+          remainingMs: Math.max(0, state.endAt - event.now),
           endAt: null,
+          pauseCount:
+            state.phase === 'running_focus'
+              ? state.pauseCount + 1
+              : state.pauseCount,
           pauseStartedAt: event.now,
         };
       }
@@ -114,101 +159,78 @@ export function reducer(state, event) {
     }
 
     case 'RESUME': {
-      if (state.status !== 'paused_focus' && state.status !== 'paused_break')
+      if (state.phase !== 'paused_focus' && state.phase !== 'paused_break')
         return state;
       const pausedFor = state.pauseStartedAt
         ? Math.floor((event.now - state.pauseStartedAt) / 1000)
         : 0;
       return {
         ...state,
-        status: state.status === 'paused_focus' ? 'running_focus' : 'running_break',
-        endAt: event.now + state.remainingSeconds * 1000,
+        phase:
+          state.phase === 'paused_focus' ? 'running_focus' : 'running_break',
+        endAt: event.now + state.remainingMs,
         pausedSeconds: state.pausedSeconds + Math.max(0, pausedFor),
         pauseStartedAt: null,
       };
     }
 
     case 'RESET': {
-      // Reset never saves (assignment T3). Subject selection is preserved.
+      // Reset never saves an incomplete session (assignment T3) — but if the
+      // focus had already expired, completion wins first, then we go idle.
+      let s = state;
+      if (focusExpired(s, event.now)) {
+        s = completeFocus(s, event.now, false);
+      }
       return {
         ...initialState,
-        subjectId: state.subjectId,
-        subjectName: state.subjectName,
-        intention: state.intention,
+        subjectId: s.subjectId,
+        subjectName: s.subjectName,
+        intention: s.intention,
+        save: s.save, // a pending save must survive a reset
+        notice: 'reset',
       };
     }
 
     case 'FOCUS_ELAPSED': {
-      if (state.status !== 'running_focus') return state;
-      // Anchor the break at the theoretical focus end, not at "now" —
-      // if the tab was closed, the break still ends when it should have.
-      const focusEndAt = state.endAt;
-      return {
-        ...state,
-        status: 'saving_focus',
-        remainingSeconds: 0,
-        endAt: null,
-        breakEndAt: focusEndAt + BREAK_SECONDS * 1000,
-        completedSession: {
-          subjectId: state.subjectId,
-          subjectName: state.subjectName,
-          minutes: Math.round(state.durationSeconds / 60),
-          completionId: state.completionId,
-          startedAt: state.startedAt,
-          completedAt: focusEndAt,
-          pauseCount: state.pauseCount,
-          pausedSeconds: state.pausedSeconds,
-          intention: state.intention,
-        },
-        completedWhileAway: Boolean(event.away),
-      };
+      if (state.phase !== 'running_focus') return state;
+      return completeFocus(state, event.now, Boolean(event.away));
     }
 
-    case 'SAVE_SUCCEEDED':
-    case 'SAVE_QUEUED': {
-      if (state.status !== 'saving_focus') return state;
-      // If the theoretical break is already over (long absence), skip it.
-      if (event.now >= state.breakEndAt) {
-        return {
-          ...state,
-          status: 'break_complete',
-          endAt: null,
-          remainingSeconds: 0,
-        };
-      }
-      return {
-        ...state,
-        status: 'running_break',
-        durationSeconds: BREAK_SECONDS,
-        endAt: state.breakEndAt,
-        remainingSeconds: Math.ceil((state.breakEndAt - event.now) / 1000),
-        pauseStartedAt: null,
-      };
+    case 'SAVE_SUCCEEDED': {
+      if (!state.save) return state;
+      return { ...state, save: null };
+    }
+
+    case 'SAVE_FAILED': {
+      if (!state.save) return state;
+      return { ...state, save: { ...state.save, status: 'queued' } };
     }
 
     case 'BREAK_ELAPSED': {
-      if (state.status !== 'running_break') return state;
+      if (state.phase !== 'running_break') return state;
       return {
         ...state,
-        status: 'break_complete',
+        phase: 'break_complete',
         endAt: null,
-        remainingSeconds: 0,
+        remainingMs: 0,
+        notice: state.notice === 'away' ? 'away' : 'break_finished',
       };
     }
 
     case 'SKIP_BREAK': {
-      if (state.status !== 'running_break' && state.status !== 'paused_break')
+      if (state.phase !== 'running_break' && state.phase !== 'paused_break')
         return state;
       return {
         ...state,
-        status: 'break_complete',
+        phase: 'break_complete',
         endAt: null,
-        remainingSeconds: 0,
+        remainingMs: 0,
+        notice: 'break_finished',
       };
     }
 
-    case 'CLEAR_COMPLETION': {
-      return { ...state, completedSession: null };
+    case 'CLEAR_OVERLAY': {
+      return { ...state, overlay: null };
     }
 
     default:
@@ -216,19 +238,13 @@ export function reducer(state, event) {
   }
 }
 
-/**
- * Reconcile a persisted record against current wall-clock time.
- * Called once on load; the returned state may still need the save flow
- * (status saving_focus), which the hook drives.
- */
+/** Reconcile a restored record against current wall-clock time. */
 export function reconcile(state, now) {
   if (!state) return initialState;
-
-  if (state.status === 'running_focus' && now >= state.endAt) {
-    // Focus elapsed while we were away — complete it exactly once.
-    return reducer(state, { type: 'FOCUS_ELAPSED', now, away: true });
+  if (state.phase === 'running_focus' && now >= state.endAt) {
+    return completeFocus(state, now, true);
   }
-  if (state.status === 'running_break' && now >= state.endAt) {
+  if (state.phase === 'running_break' && now >= state.endAt) {
     return reducer(state, { type: 'BREAK_ELAPSED', now });
   }
   return state;

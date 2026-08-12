@@ -33,3 +33,19 @@
 **D14. streak 화면 표기는 continuity** — 불꽃 아이콘·경쟁 어휘 배제. API 필드명은 과제 그대로 `streak`, aria-label은 "Current focus streak: N consecutive days"로 의미 고정.
 
 **D15. CORS preflight는 identity 검증 제외** — OPTIONS 요청은 커스텀 헤더를 싣지 않으므로 X-Client-ID 검증을 건너뛴다. 안 그러면 모든 브라우저 요청이 preflight에서 400으로 죽는다.
+
+## 2026-08-12 (Codex 감사 라운드 1 반영)
+
+**D16. 타이머 phase와 저장 상태 분리** — `saving_focus` 상태 폐기. 집중 만료 즉시 휴식이 시작되고(이론적 종료 시점 anchor), 저장은 독립된 `save: {session, status}` 필드로 병행. 네트워크가 느려도 알림·휴식이 막히지 않는다.
+
+**D17. 타이머 소유권을 라우트 밖으로** — `TimerProvider`가 HashRouter 바로 아래에서 스케줄러·복원·저장을 소유. History/Dashboard에 있어도 완료가 처리된다. 시각 모드(focus/break)는 Timer 라우트에서만 적용, 다른 화면은 종이 모드 유지.
+
+**D18. 만료 후 사용자 명령은 완료가 이긴다** — remaining이 0에 도달한 뒤 Pause/Reset이 들어오면 reducer가 먼저 완료를 처리한다. Reset은 미완료 세션을 저장하지 않지만(T3), 이미 만료된 세션의 저장 페이로드는 Reset을 넘어 보존된다.
+
+**D19. 클라이언트 ID는 canonical UUID로 저장** — 백엔드는 `str(uuid.UUID(raw))`로 정규화(하이픈 유무·중괄호·URN 표기가 같은 클라이언트). 프론트는 모듈 스코프 메모 + 저장값 UUID 검증(storage 실패 시에도 페이지 생명주기 동안 단일 ID).
+
+**D20. 중복 방어는 DB가 진실** — 과목 중복은 partial unique index(`archived_at IS NULL`)가 최종 보장, 라우트 pre-check는 친절한 에러용. IntegrityError → 409 변환. SQLite `PRAGMA foreign_keys=ON`.
+
+**D21. 프로덕션 빌드는 API URL 누락 시 즉시 실패** — `import.meta.env.PROD && !VITE_API_BASE_URL`이면 throw. 배포된 페이지가 방문자의 localhost를 호출하는 사고 방지.
+
+**미해결(다음 마일스톤)**: 서버 멱등 완성(동시 POST), completed_at 정책(늦은 동기화 시 실제 완료시각), archived 과목의 진행 중 세션 정책, 마이그레이션 도입 여부, 테스트 스위트. Codex 감사 원문: 스크래치패드 `codex-audit-m0.md`.

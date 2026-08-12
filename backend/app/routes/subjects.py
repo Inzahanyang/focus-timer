@@ -1,4 +1,5 @@
 from flask import Blueprint, g, jsonify, request
+from sqlalchemy.exc import IntegrityError
 
 from ..errors import ApiError
 from ..extensions import db
@@ -23,8 +24,14 @@ def list_subjects():
 
 @bp.post("/subjects")
 def create_subject():
-    payload = request.get_json(silent=True) or {}
-    name = str(payload.get("name", "")).strip()
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        raise ApiError(400, "invalid_body", "A JSON object is required.")
+
+    name = payload.get("name")
+    if not isinstance(name, str):
+        raise ApiError(400, "invalid_name", "Subject name must be a string.")
+    name = name.strip()
 
     if not name:
         raise ApiError(400, "invalid_name", "Subject name is required.")
@@ -48,7 +55,15 @@ def create_subject():
         client_id=g.client_id, name=name, normalized_name=normalized
     )
     db.session.add(subject)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # Concurrent duplicate slipped past the pre-check — the partial
+        # unique index is the real guarantee.
+        db.session.rollback()
+        raise ApiError(
+            409, "duplicate_subject", "A subject with this name already exists."
+        )
     return jsonify(subject.to_dict()), 201
 
 

@@ -22,6 +22,18 @@ def iso_utc(dt):
 
 class Subject(db.Model):
     __tablename__ = "subjects"
+    __table_args__ = (
+        # Real duplicate guarantee (the route pre-check is just a nicer
+        # error): one active name per client; archived names can be reused.
+        db.Index(
+            "uq_subjects_client_active_name",
+            "client_id",
+            "normalized_name",
+            unique=True,
+            sqlite_where=db.text("archived_at IS NULL"),
+            postgresql_where=db.text("archived_at IS NULL"),
+        ),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     client_id = db.Column(db.String(36), nullable=False, index=True)
@@ -50,6 +62,13 @@ class Session(db.Model):
             "client_id",
             "subject_id",
             "completed_at",
+        ),
+        db.CheckConstraint("duration > 0", name="ck_sessions_duration_positive"),
+        db.CheckConstraint(
+            "pause_count >= 0", name="ck_sessions_pause_count_nonneg"
+        ),
+        db.CheckConstraint(
+            "paused_seconds >= 0", name="ck_sessions_paused_seconds_nonneg"
         ),
     )
 

@@ -25,10 +25,12 @@ def require_client_identity():
     if not raw:
         raise ApiError(400, "missing_client_id", "X-Client-ID header is required.")
     try:
-        uuid.UUID(raw)
+        client_uuid = uuid.UUID(raw)
     except (ValueError, AttributeError):
         raise ApiError(400, "invalid_client_id", "X-Client-ID must be a valid UUID.")
-    g.client_id = raw.lower()
+    # Canonical form: hyphenless/braced/URN spellings of the same UUID must
+    # map to the same client and always fit VARCHAR(36).
+    g.client_id = str(client_uuid)
 
     tz_name = request.headers.get(TIMEZONE_HEADER, "").strip() or DEFAULT_TIMEZONE
     try:

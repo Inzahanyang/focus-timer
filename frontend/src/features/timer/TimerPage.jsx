@@ -1,24 +1,48 @@
-import { useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatClock } from '../../lib/formatters';
 import ContourRing from './ContourRing';
 import SubjectPicker from './SubjectPicker';
-import { FOCUS_SECONDS } from './timerMachine';
-import { useFocusTimer } from './useFocusTimer';
+import { FOCUS_SECONDS, isReady } from './timerMachine';
+import { useTimer } from './useTimer';
+
+const NOTICE_COPY = {
+  reset: 'Session cleared. Begin again when ready.',
+  away: 'Session completed while you were away.',
+  break_finished: 'Break finished. Ready when you are.',
+};
 
 export default function TimerPage() {
-  // Day 1: completion save is a stub; POST /sessions arrives with the
-  // sessions API. The machine and flow are already final.
-  const onComplete = useCallback(async () => null, []);
+  const { state, remaining, progress, dispatch } = useTimer();
+  const { phase } = state;
 
-  const { state, remaining, progress, dispatch } = useFocusTimer(onComplete);
-  const { status } = state;
+  const ready = isReady(phase);
+  const inFocus = phase === 'running_focus' || phase === 'paused_focus';
+  const inBreak = phase === 'running_break' || phase === 'paused_break';
+  const paused = phase === 'paused_focus' || phase === 'paused_break';
 
-  const ready = status === 'idle_focus' || status === 'break_complete';
-  const inFocus =
-    status === 'running_focus' ||
-    status === 'paused_focus' ||
-    status === 'saving_focus';
-  const inBreak = status === 'running_break' || status === 'paused_break';
+  // Polite screen-reader announcements: state changes + whole minutes.
+  const [announcement, setAnnouncement] = useState('');
+  const lastMinuteRef = useRef(null);
+  useEffect(() => {
+    if (phase === 'running_break') {
+      setAnnouncement('Focus session complete. Break started.');
+    } else if (phase === 'break_complete') {
+      setAnnouncement('Break finished.');
+    }
+  }, [phase]);
+  useEffect(() => {
+    if (phase !== 'running_focus') {
+      lastMinuteRef.current = null;
+      return;
+    }
+    const minutes = Math.floor(remaining / 60);
+    if (remaining % 60 === 0 && minutes > 0 && lastMinuteRef.current !== minutes) {
+      lastMinuteRef.current = minutes;
+      setAnnouncement(
+        `${minutes} minute${minutes === 1 ? '' : 's'} remaining`
+      );
+    }
+  }, [phase, remaining]);
 
   const start = () =>
     dispatch({
@@ -65,11 +89,14 @@ export default function TimerPage() {
 
         <p className="timer-duration">25 minutes</p>
 
-        {status === 'break_complete' && (
+        {state.notice && NOTICE_COPY[state.notice] && (
           <p className="field-note" role="status">
-            {state.completedWhileAway
-              ? 'Session completed while you were away.'
-              : 'Break finished. Ready when you are.'}
+            {NOTICE_COPY[state.notice]}
+          </p>
+        )}
+        {state.save?.status === 'queued' && (
+          <p className="field-note" role="status">
+            Saved on this device — syncing.
           </p>
         )}
 
@@ -83,31 +110,42 @@ export default function TimerPage() {
             Begin focus
           </button>
         </div>
+
+        <div className="sr-only" aria-live="polite">
+          {announcement}
+        </div>
       </div>
     );
   }
 
   /* ---------- focus / break: the room, not a dashboard ---------- */
-  const paused = status === 'paused_focus' || status === 'paused_break';
+  const ringProgress = inBreak ? 1 - progress : progress;
+  const ringLabel = inBreak
+    ? `Break time remaining, ${Math.round((1 - progress) * 100)} percent`
+    : `Focus progress, ${Math.round(progress * 100)} percent complete`;
 
   return (
     <div className="timer-page">
       <ContourRing
-        progress={inBreak ? 1 - progress : progress}
-        seed={state.subjectId || 1}
+        progress={ringProgress}
+        seed={
+          (state.subjectId || 1) * 31 +
+          (state.startedAt ? state.startedAt % 1009 : 0)
+        }
         paused={paused}
+        label={ringLabel}
+        valueNow={Math.round(ringProgress * 100)}
       >
         <span className="stage-subject">
           {inBreak ? 'BREAK' : state.subjectName}
         </span>
-        <span className="stage-clock" role="timer" aria-live="off">
+        <span className="stage-clock" role="timer">
           {formatClock(remaining)}
         </span>
         <span className="stage-status" role="status">
-          {status === 'paused_focus' && 'Focus paused'}
-          {status === 'paused_break' && 'Break paused'}
-          {status === 'saving_focus' && 'Saving…'}
-          {status === 'running_break' && 'Let your attention widen.'}
+          {phase === 'paused_focus' && 'Focus paused'}
+          {phase === 'paused_break' && 'Break paused'}
+          {phase === 'running_break' && 'Let your attention widen.'}
         </span>
         {inFocus && state.intention && (
           <span className="stage-intention">{state.intention}</span>
@@ -115,7 +153,7 @@ export default function TimerPage() {
       </ContourRing>
 
       <div className="timer-controls">
-        {(status === 'running_focus' || status === 'running_break') && (
+        {(phase === 'running_focus' || phase === 'running_break') && (
           <button
             type="button"
             className="btn"
@@ -137,7 +175,7 @@ export default function TimerPage() {
           <button
             type="button"
             className="btn btn-quiet"
-            onClick={() => dispatch({ type: 'RESET' })}
+            onClick={() => dispatch({ type: 'RESET', now: Date.now() })}
           >
             Reset
           </button>
@@ -153,15 +191,18 @@ export default function TimerPage() {
         )}
       </div>
 
-      {state.completedSession && status !== 'saving_focus' && (
+      {state.overlay && (
         <div className="completion" role="status">
           <div className="completion-title">A new contour has been added.</div>
           <div className="completion-meta">
-            {state.completedSession.subjectName} ·{' '}
-            {state.completedSession.minutes} minutes
+            {state.overlay.subjectName} · {state.overlay.minutes} minutes
           </div>
         </div>
       )}
+
+      <div className="sr-only" aria-live="polite">
+        {announcement}
+      </div>
     </div>
   );
 }
