@@ -48,7 +48,17 @@
 
 **D21. 프로덕션 빌드는 API URL 누락 시 즉시 실패** — `import.meta.env.PROD && !VITE_API_BASE_URL`이면 throw. 배포된 페이지가 방문자의 localhost를 호출하는 사고 방지.
 
-**미해결(다음 마일스톤)**: 서버 멱등 완성(동시 POST), completed_at 정책(늦은 동기화 시 실제 완료시각), archived 과목의 진행 중 세션 정책. Codex 감사 원문: 스크래치패드 `codex-audit-m0.md`.
+## 2026-08-12 (sessions 마일스톤 + 감사 반영)
+
+**D27. archived 과목은 진행 중이던 세션만 저장 가능** — `started_at <= archived_at + 5분`인 세션은 허용(다른 탭에서 과목을 지워도 진행 중이던 타이머의 저장이 유실되지 않음). started_at이 없거나 archive 이후 시작이면 409. 앱 경로는 항상 started_at을 전송.
+
+**D28. 멱등 키 + request fingerprint** — 같은 키의 재전송은 fingerprint(정규화된 요청 내용의 SHA-256)가 같을 때만 원본을 재생(200). 다르면 409 `idempotency_conflict` — 키 재사용으로 다른 세션이 조용히 유실되는 것을 차단. 키 없는 요청의 IntegrityError는 재생 조회 없이 그대로 발생.
+
+**D29. 세션 삭제는 soft delete** — `deleted_at` 마킹. 멱등 증거(키+fingerprint)가 삭제보다 오래 살아남아, 응답을 잃은 탭의 늦은 재시도가 삭제된 세션을 부활시키지 못함. 모든 목록·통계 쿼리는 `deleted_at IS NULL`.
+
+**D30. 저장 성공은 `focus-atlas:sessions-changed` 이벤트 발행** — History 등 목록 화면이 자동 재조회. 완료시각 정책: 클라이언트가 보낸 `completed_at`(실제 완료시각)을 저장 — 금요일에 끝난 세션을 월요일에 동기화해도 금요일로 집계.
+
+**미해결**: 없음 (이전 미해결 3건은 D27/D28/D30으로 종결). Codex 감사 원문: 스크래치패드 `codex-audit-*.md`.
 
 ## 2026-08-12 (Codex 재검토 라운드 2 반영)
 

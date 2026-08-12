@@ -14,17 +14,26 @@ export default function ConfirmDialog({
 }) {
   const cancelRef = useRef(null);
 
+  // While the action is in flight the dialog cannot be dismissed —
+  // a late completion must never land on a different dialog.
+  const cancel = () => {
+    if (!busy) onCancel();
+  };
+
   useEffect(() => {
     cancelRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
     const onKey = (event) => {
-      if (event.key === 'Escape') onCancel();
+      if (event.key === 'Escape' && !busy) onCancel();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onCancel]);
+  }, [onCancel, busy]);
 
   return (
-    <div className="dialog-backdrop" onClick={onCancel}>
+    <div className="dialog-backdrop" onClick={cancel}>
       <div
         className="dialog"
         role="dialog"
@@ -39,7 +48,7 @@ export default function ConfirmDialog({
             ref={cancelRef}
             type="button"
             className="btn"
-            onClick={onCancel}
+            onClick={cancel}
             disabled={busy}
           >
             Cancel

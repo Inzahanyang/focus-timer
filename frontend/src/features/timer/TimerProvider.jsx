@@ -83,7 +83,12 @@ export function TimerProvider({ onComplete, children }) {
         const id = item.session.completionId;
         inFlightRef.current.add(id);
         Promise.resolve(onComplete ? onComplete(item.session) : null)
-          .then(() => rawDispatch({ type: 'SAVE_SUCCEEDED', completionId: id }))
+          .then(() => {
+            rawDispatch({ type: 'SAVE_SUCCEEDED', completionId: id });
+            // Any mounted list (History) refetches — a session completed
+            // while reading History must appear without manual action.
+            window.dispatchEvent(new Event('focus-atlas:sessions-changed'));
+          })
           .catch(() => rawDispatch({ type: 'SAVE_FAILED', completionId: id }))
           .finally(() => inFlightRef.current.delete(id));
       });

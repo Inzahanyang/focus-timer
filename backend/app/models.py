@@ -88,6 +88,12 @@ class Session(db.Model):
     quality = db.Column(db.String(16), nullable=True)  # flow | okay | distracted
     note = db.Column(db.String(280), nullable=True)
     idempotency_key = db.Column(db.String(64), nullable=True)
+    # SHA-256 of the normalized request; same key + different fingerprint
+    # is a 409, never a silent replay (audit: sessions #1).
+    request_fingerprint = db.Column(db.String(64), nullable=True)
+    # Soft delete: the row outlives DELETE so a late idempotent retry can
+    # never resurrect a deleted session (audit: sessions #2).
+    deleted_at = db.Column(db.DateTime, nullable=True)
     is_demo = db.Column(db.Boolean, nullable=False, default=False)
 
     def to_dict(self):

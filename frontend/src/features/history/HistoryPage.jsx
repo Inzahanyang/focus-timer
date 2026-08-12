@@ -68,8 +68,21 @@ export default function HistoryPage() {
   const [deleting, setDeleting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  // Archived subjects only surface through sessions — once discovered,
+  // a facet stays available even when the current filter returns nothing
+  // (otherwise the select could silently disagree with the actual query).
+  const [knownFacets, setKnownFacets] = useState(new Map());
+
   useEffect(() => {
     api('/subjects').then(setSubjects).catch(() => {});
+  }, []);
+
+  // A session saved while History is open must appear on its own.
+  useEffect(() => {
+    const onChange = () => setReloadKey((k) => k + 1);
+    window.addEventListener('focus-atlas:sessions-changed', onChange);
+    return () =>
+      window.removeEventListener('focus-atlas:sessions-changed', onChange);
   }, []);
 
   useEffect(() => {
@@ -81,27 +94,34 @@ export default function HistoryPage() {
       range,
       signal: controller.signal,
     })
-      .then(setSessions)
+      .then((data) => {
+        setSessions(data);
+        setKnownFacets((previous) => {
+          const merged = new Map(previous);
+          for (const session of data) {
+            if (!merged.has(session.subject_id)) {
+              merged.set(session.subject_id, session.subject_name);
+            }
+          }
+          return merged;
+        });
+      })
       .catch((err) => {
         if (err.name !== 'AbortError') setError(err.message);
       });
     return () => controller.abort(); // stale filter responses never land
   }, [subjectFilter, range, reloadKey]);
 
-  // Archived subjects still appear in history — the filter must offer them
-  // even though /subjects only returns active ones.
   const filterOptions = useMemo(() => {
     const seen = new Map(subjects.map((s) => [s.id, s.name]));
-    for (const session of sessions || []) {
-      if (!seen.has(session.subject_id)) {
-        seen.set(session.subject_id, session.subject_name);
-      }
+    for (const [id, name] of knownFacets) {
+      if (!seen.has(id)) seen.set(id, name);
     }
     return [...seen.entries()].map(([id, name]) => ({ id, name }));
-  }, [subjects, sessions]);
+  }, [subjects, knownFacets]);
 
   const confirmDelete = async () => {
-    if (!pendingDelete) return;
+    if (!pendingDelete || deleting) return;
     setDeleting(true);
     try {
       await deleteSession(pendingDelete.id);

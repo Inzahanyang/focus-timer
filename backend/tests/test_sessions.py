@@ -58,11 +58,29 @@ def test_snapshot_survives_subject_archive(client, cid, make_subject):
     assert sessions[0]["subject_name"] == "Reading"
 
 
-def test_archived_subject_still_accepts_in_flight_session(client, cid, make_subject):
+def test_archived_subject_accepts_only_in_flight_sessions(client, cid, make_subject):
     subject = make_subject(cid)
+    started_before = iso_z(local_now() - timedelta(minutes=20))
     client.delete("/subjects/{}".format(subject["id"]), headers=headers(cid))
-    response = post_session(client, cid, {"subject_id": subject["id"], "duration": 25})
-    assert response.status_code == 201  # D27
+
+    # started before the archive -> the in-flight save is accepted (D27)
+    ok = post_session(
+        client,
+        cid,
+        {
+            "subject_id": subject["id"],
+            "duration": 25,
+            "started_at": started_before,
+            "completed_at": iso_z(local_now() - timedelta(minutes=1)),
+        },
+    )
+    assert ok.status_code == 201
+
+    # no started_at -> cannot prove it was in flight -> rejected
+    assert (
+        post_session(client, cid, {"subject_id": subject["id"], "duration": 25}).status_code
+        == 409
+    )
 
 
 def test_duration_validation(client, cid, make_subject):
@@ -122,6 +140,41 @@ def test_idempotent_replay_returns_same_session(client, cid, make_subject):
     assert second.status_code == 200
     assert first.get_json()["id"] == second.get_json()["id"]
     assert len(client.get("/sessions", headers=headers(cid)).get_json()) == 1
+
+
+def test_same_key_different_payload_is_conflict(client, cid, make_subject):
+    subject = make_subject(cid)
+    key = str(uuid.uuid4())
+    first = post_session(client, cid, {"subject_id": subject["id"], "duration": 25}, key)
+    assert first.status_code == 201
+    conflict = post_session(
+        client, cid, {"subject_id": subject["id"], "duration": 50}, key
+    )
+    assert conflict.status_code == 409
+    assert conflict.get_json()["error"]["code"] == "idempotency_conflict"
+    # the original session is untouched, nothing extra was created
+    sessions = client.get("/sessions", headers=headers(cid)).get_json()
+    assert [s["duration"] for s in sessions] == [25]
+
+
+def test_deleted_session_is_not_resurrected_by_late_retry(client, cid, make_subject):
+    subject = make_subject(cid)
+    key = str(uuid.uuid4())
+    body = {"subject_id": subject["id"], "duration": 25}
+    created = post_session(client, cid, body, key).get_json()
+
+    # user deletes the session (possibly from another tab)
+    assert (
+        client.delete("/sessions/{}".format(created["id"]), headers=headers(cid)).status_code
+        == 200
+    )
+    assert client.get("/sessions", headers=headers(cid)).get_json() == []
+
+    # the original tab's outbox retries the same POST — replay, no new row
+    retry = post_session(client, cid, body, key)
+    assert retry.status_code == 200
+    assert retry.get_json()["id"] == created["id"]
+    assert client.get("/sessions", headers=headers(cid)).get_json() == []
 
 
 def test_same_key_different_clients_both_create(client, cid, cid2, make_subject):
