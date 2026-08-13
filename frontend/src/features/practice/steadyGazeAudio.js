@@ -10,14 +10,17 @@
 
 // All level constants in one place for listening adjustments (brief §6).
 export const AUDIO_LEVELS = {
-  gazeLoopGain: 0.045,
-  eyesLoopGain: 0.03,
+  // owner listening round 1: the brief's 0.045/0.030 were inaudible on
+  // laptop speakers (the drone lives around 55 Hz, which small speakers
+  // barely reproduce) — doubled, still under the bells
+  gazeLoopGain: 0.09,
+  eyesLoopGain: 0.06,
   bellStartGain: 0.1,
   bellTransitionGain: 0.1,
   bellCompleteGain: 0.1,
   // ambient chain EQ: tame the 55 Hz fundamental's room presence
   lowshelfHz: 90,
-  lowshelfDb: -4,
+  lowshelfDb: -2,
   crossfadeS: 1.0, // 0.8–1.2s allowed
 };
 
@@ -77,6 +80,7 @@ let ctx = null;
 const buffers = new Map(); // name -> AudioBuffer
 const pendingFetches = new Map(); // name -> Promise
 let activeLoop = null; // { name, source, gain }
+let ambientStage = null; // latest stage requested — guards slow decodes
 
 function getContext() {
   if (!ctx) {
@@ -159,6 +163,7 @@ export async function playBell(name) {
     with no loop fades the current one out. Gapless: loop=true on the
     buffer source, no fades baked into the files. */
 export async function setAmbientStage(stage) {
+  ambientStage = stage;
   const context = getContext();
   if (!context || context.state !== 'running') return;
   const name = loopForStage(stage);
@@ -179,8 +184,9 @@ export async function setAmbientStage(stage) {
   if (!name) return;
   try {
     const buffer = await loadBuffer(name);
-    // the stage may have changed while the large file was decoding
-    if (loopForStage(stage) !== name) return;
+    // the stage may have moved on while the large file was decoding —
+    // a late arrival must not fade out the loop that took its place
+    if (ambientStage !== stage) return;
     const gain = context.createGain();
     const eq = context.createBiquadFilter();
     eq.type = 'lowshelf';
@@ -225,6 +231,7 @@ export async function resumeAudio() {
 
 /** End of practice: stop the loop; keep the context for the next one. */
 export function stopAmbient() {
+  ambientStage = null; // cancels any loop still decoding
   if (!activeLoop || !ctx) return;
   try {
     const t = ctx.currentTime;
