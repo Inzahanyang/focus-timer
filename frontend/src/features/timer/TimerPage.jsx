@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { isDemoLoaded, seedDemoAtlas } from '../demo/demoApi';
 import { formatClock, subjectColorVar } from '../../lib/formatters';
 import { breathState, isGuideEnabled, setGuideEnabled } from './breathing';
@@ -22,7 +22,6 @@ export default function TimerPage() {
   const { phase } = state;
   const [guided, setGuided] = useState(isGuideEnabled);
 
-  const [hasSubjects, setHasSubjects] = useState(true); // optimistic
   const [pickerKey, setPickerKey] = useState(0);
   const [demoBusy, setDemoBusy] = useState(false);
   const [demoLoaded, setDemoLoaded] = useState(isDemoLoaded);
@@ -33,11 +32,6 @@ export default function TimerPage() {
     return () =>
       window.removeEventListener('focus-atlas:demo-changed', onChange);
   }, []);
-
-  const onSubjectsLoaded = useCallback(
-    (subjects) => setHasSubjects(subjects.length > 0),
-    []
-  );
 
   const exploreSample = async () => {
     if (demoBusy) return;
@@ -99,7 +93,6 @@ export default function TimerPage() {
         <SubjectPicker
           key={pickerKey}
           selectedId={state.subjectId}
-          onLoaded={onSubjectsLoaded}
           onSelect={(subject) =>
             dispatch({
               type: 'SELECT_SUBJECT',
@@ -148,18 +141,10 @@ export default function TimerPage() {
           </button>
         </div>
 
-        {/* Reviewer paths — always plainly labeled, never disguised. */}
-        {!hasSubjects && (
-          <button
-            type="button"
-            className="btn btn-quiet demo-entry"
-            disabled={demoBusy}
-            onClick={exploreSample}
-          >
-            {demoBusy ? 'Preparing sample atlas…' : 'Explore a sample atlas'}
-          </button>
-        )}
-        {demoLoaded && (
+        {/* Reviewer path — one quiet line, always reachable from any state,
+            always plainly labeled, never disguised. Creating a subject
+            first must not strand the reviewer (found by the owner). */}
+        {demoLoaded ? (
           <button
             type="button"
             className="btn btn-quiet demo-entry"
@@ -174,6 +159,15 @@ export default function TimerPage() {
             }
           >
             Try a 10-second demo session
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-quiet demo-entry"
+            disabled={demoBusy}
+            onClick={exploreSample}
+          >
+            {demoBusy ? 'Preparing sample atlas…' : 'Explore a sample atlas'}
           </button>
         )}
 
