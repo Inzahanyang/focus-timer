@@ -1,15 +1,16 @@
 # TEST_REPORT — Focus Atlas
 
 > 최종 검증: 2026-08-13 (제출 전). 자동 테스트는 로컬, 수동/스모크는 실배포 주소에서 수행.
+> Codex 최종 감사(제출 전): BLOCKER 0 · 제출 가능 판정. MAJOR 1건(멀티탭 outbox 덮어쓰기)은 확장(E5) 범위로 v1.1 이월.
 
 ## 자동 테스트
 
 | 스위트 | 개수 | 결과 | 실행 |
 |---|---|---|---|
-| 백엔드 pytest | 66+ (subjects/sessions/stats/insights/demo/time_utils/config/fixed-clock) | 전부 통과 | `cd backend && .venv/bin/pytest` |
+| 백엔드 pytest | 70 (subjects/sessions/stats/insights/demo/time_utils/config/fixed-clock) | 전부 통과 | `cd backend && .venv/bin/pytest` |
 | 프론트 vitest | 35 (타이머 리듀서 20 · 지형 수학 9 · 호흡 6) | 전부 통과 | `cd frontend && npm test` |
 | 린트 | oxlint | 경고 0 | `npm run lint` |
-| 프로덕션 빌드 | vite build | 통과 (번들 내 localhost 금지 검사 포함) | `npm run build` |
+| 프로덕션 빌드 | vite build | 통과 (번들 내 localhost 금지 검사는 Pages 워크플로의 별도 step) | `npm run build` |
 
 핵심 자동 커버리지:
 - 타이머: 만료 경계(±1ms) × Pause/Reset × 집중/휴식, outbox 격리(A 미저장 중 B 완료), 휴식 anchor, reconcile 4경로
@@ -47,6 +48,6 @@
 
 ## 알려진 한계
 
-- 멀티탭 동기화 없음(스트레치 항목) — 단, 중복 저장은 서버 멱등 키가 차단
+- 멀티탭 동기화 없음(스트레치 항목) — 중복 저장은 서버 멱등 키가 차단하지만, 두 탭이 같은 저장 키를 쓰므로 드문 시나리오(오프라인 완료 직후 다른 오래된 탭이 상태를 덮어쓰는 경우)에서 미전송 outbox가 유실될 수 있음. 오프라인 보존 보장은 **단일 탭 기준**. v1.1에서 outbox 저장 분리+병합으로 해결 예정
 - 소리/브라우저 알림 미구현 — 과제는 "소리 **또는** 시각 효과"이며 시각 효과(완료 오버레이)로 충족
-- Codex 최종 감사 결과는 별도 반영 (스크래치패드 codex-final-audit.md)
+

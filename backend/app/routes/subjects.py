@@ -43,6 +43,12 @@ def create_subject():
         )
 
     normalized = name.casefold()
+    # casefold can EXPAND ("ß"*40 -> 80 chars) past the column width, and
+    # NUL bytes upset PostgreSQL — both are a clean 400, never a 500.
+    if "\x00" in name or len(normalized) > MAX_NAME_LENGTH:
+        raise ApiError(
+            400, "invalid_name", "Subject name contains unsupported characters."
+        )
     duplicate = Subject.query.filter_by(
         client_id=g.client_id, normalized_name=normalized, archived_at=None
     ).first()

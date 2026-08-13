@@ -58,7 +58,11 @@ def _build_pattern(local_today):
 @bp.post("/demo/seed")
 def seed_demo():
     # Idempotent: a second call is a no-op report, never a duplicate atlas.
-    existing = Session.query.filter_by(client_id=g.client_id, is_demo=True).count()
+    # Only ACTIVE demo sessions count — a user who deleted them all should
+    # be able to reseed (final audit MINOR).
+    existing = Session.query.filter_by(
+        client_id=g.client_id, is_demo=True, deleted_at=None
+    ).count()
     if existing > 0:
         return jsonify({"seeded": False, "sessions": existing})
 

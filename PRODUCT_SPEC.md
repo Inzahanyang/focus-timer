@@ -15,57 +15,57 @@
 
 | # | 요구사항 | 구현 | 상태 |
 |---|---|---|---|
-| T1 | 25분 카운트다운 시작 | 기본 25:00, endAt 기반 | ⬜ |
-| T2 | 일시정지·재개 | 상태머신 PAUSE/RESUME, 남은 시간 보존 | ⬜ |
-| T3 | 리셋 | idle 복귀, 저장 안 함 | ⬜ |
-| T4 | 시각적 진행 지표 | 닫혀가는 등고선(SVG), 파생값 기반 | ⬜ |
-| T5 | 시작 전 과목 선택 | 과목 미선택 시 Begin focus 비활성 | ⬜ |
-| T6 | 과목 목록 생성·관리 | Subjects CRUD (soft delete) | ⬜ |
-| T7 | 완료 시 자동 저장 | POST /sessions, 멱등 키로 정확히 1회 | ⬜ |
-| T8 | 종료 알림 (소리 또는 시각) | 시각 효과 항상 + 선택적 사운드 | ⬜ |
-| T9 | 종료 후 5분 휴식 자동 시작 | FOCUS_ELAPSED → running_break | ⬜ |
+| T1 | 25분 카운트다운 시작 | 기본 25:00, endAt 기반 | ✅ |
+| T2 | 일시정지·재개 | 상태머신 PAUSE/RESUME, 남은 시간 보존 | ✅ |
+| T3 | 리셋 | idle 복귀, 저장 안 함 | ✅ |
+| T4 | 시각적 진행 지표 | 닫혀가는 등고선(SVG), 파생값 기반 | ✅ |
+| T5 | 시작 전 과목 선택 | 과목 미선택 시 Begin focus 비활성 | ✅ |
+| T6 | 과목 목록 생성·관리 | Subjects CRUD (soft delete) | ✅ |
+| T7 | 완료 시 자동 저장 | POST /sessions, 멱등 키로 정확히 1회 | ✅ |
+| T8 | 종료 알림 (소리 또는 시각) | 시각 효과 항상 + 선택적 사운드 | ✅ |
+| T9 | 종료 후 5분 휴식 자동 시작 | FOCUS_ELAPSED → running_break | ✅ |
 
 ### History 화면
 
 | # | 요구사항 | 구현 | 상태 |
 |---|---|---|---|
-| H1 | 완료 세션 전체 목록 | GET /sessions, 최신순 | ⬜ |
-| H2 | 과목·시간·날짜 표시 | 지층 행(과목명·분·완료시각 텍스트 병기) | ⬜ |
-| H3 | 과목별 필터 | ?subject_id= | ⬜ |
-| H4 | 날짜 범위 필터 (주/월/전체) | ?range=week\|month\|all, 로컬 시간대 기준 | ⬜ |
-| H5 | 세션 삭제 | DELETE /sessions/<id> + 확인 대화상자 | ⬜ |
+| H1 | 완료 세션 전체 목록 | GET /sessions, 최신순 | ✅ |
+| H2 | 과목·시간·날짜 표시 | 지층 행(과목명·분·완료시각 텍스트 병기) | ✅ |
+| H3 | 과목별 필터 | ?subject_id= | ✅ |
+| H4 | 날짜 범위 필터 (주/월/전체) | ?range=week\|month\|all, 로컬 시간대 기준 | ✅ |
+| H5 | 세션 삭제 | DELETE /sessions/<id> + 확인 대화상자 | ✅ |
 
 ### Dashboard 화면
 
 | # | 요구사항 | 구현 | 상태 |
 |---|---|---|---|
-| D1 | 연속 집중 일수 | 서버 계산 streak (표시명 continuity) | ⬜ |
-| D2 | 전체 집중 시간 | 서버 계산 total_hours | ⬜ |
-| D3 | 이번 주 세션 수 | 서버 계산, 로컬 월~일 | ⬜ |
-| D4 | 과목별 막대 차트 | Recharts — "Where did your attention go?" | ⬜ |
-| D5 | 요일별(월~일) 막대 차트 | Recharts — "When did focus take shape?" zero-fill | ⬜ |
+| D1 | 연속 집중 일수 | 서버 계산 streak (표시명 continuity) | ✅ |
+| D2 | 전체 집중 시간 | 서버 계산 total_hours | ✅ |
+| D3 | 이번 주 세션 수 | 서버 계산, 로컬 월~일 | ✅ |
+| D4 | 과목별 막대 차트 | Recharts — "Where did your attention go?" | ✅ |
+| D5 | 요일별(월~일) 막대 차트 | Recharts — "When did focus take shape?" zero-fill | ✅ |
 
 ### API (계약 고정 — 필드 제거·변경 금지, 추가만 허용)
 
 | # | 엔드포인트 | 상태 |
 |---|---|---|
-| A1 | GET /subjects → `[{id, name}]` | ⬜ |
-| A2 | POST /subjects `{name}` → 201 `{id, name}` | ⬜ |
-| A3 | DELETE /subjects/<id> → `{success: true}` | ⬜ |
-| A4 | GET /sessions (?subject_id, ?range) → `[{id, subject_id, subject_name, duration, created_at}]` | ⬜ |
-| A5 | POST /sessions `{subject_id, duration}` → `{id, subject_id, duration, created_at}` | ⬜ |
-| A6 | DELETE /sessions/<id> → `{success: true}` | ⬜ |
-| A7 | GET /stats → `{streak, total_hours, sessions_this_week, by_subject, by_weekday}` | ⬜ |
+| A1 | GET /subjects → `[{id, name}]` | ✅ |
+| A2 | POST /subjects `{name}` → 201 `{id, name}` | ✅ |
+| A3 | DELETE /subjects/<id> → `{success: true}` | ✅ |
+| A4 | GET /sessions (?subject_id, ?range) → `[{id, subject_id, subject_name, duration, created_at}]` | ✅ |
+| A5 | POST /sessions `{subject_id, duration}` → `{id, subject_id, duration, created_at}` | ✅ |
+| A6 | DELETE /sessions/<id> → `{success: true}` | ✅ |
+| A7 | GET /stats → `{streak, total_hours, sessions_this_week, by_subject, by_weekday}` | ✅ |
 
 ### 기술 스택·배포
 
 | # | 요구사항 | 상태 |
 |---|---|---|
-| S1 | React + React Router (Timer/History/Dashboard 3 라우트) | ⬜ |
-| S2 | Recharts 막대 차트 2개 | ⬜ |
-| S3 | Flask 백엔드 | ⬜ |
-| S4 | GitHub Pages 프론트 배포 | ⬜ |
-| S5 | Railway 백엔드 배포 (gunicorn main:app) | ⬜ |
+| S1 | React + React Router (Timer/History/Dashboard 3 라우트) | ✅ |
+| S2 | Recharts 막대 차트 2개 | ✅ |
+| S3 | Flask 백엔드 | ✅ |
+| S4 | GitHub Pages 프론트 배포 | ✅ |
+| S5 | Railway 백엔드 배포 (gunicorn main:app) | ✅ |
 
 ---
 
@@ -109,7 +109,7 @@ README·제출 설명: 한국어
 | 순간 | 카피 |
 |---|---|
 | Tagline | Your attention shapes a landscape. |
-| 첫 화면 | FOCUS ATLAS / Your attention shapes a landscape. / Begin with one focused session. |
+| 첫 화면 | (구현에서 대체됨: 첫 화면은 곧바로 "What will receive your attention?" 질문 — 별도 웰컴 화면 없이 제품 질문이 온보딩을 겸함) |
 | 시작 전 질문 | What will receive your attention? |
 | 시작 전 보조 | Choose a subject and set one clear intention. |
 | 세션 완료 | A new contour has been added. |

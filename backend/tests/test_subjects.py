@@ -40,6 +40,10 @@ def test_create_rejects_bad_bodies(client, cid):
         "/subjects", json={"name": "x" * 41}, headers=headers(cid)
     )
     assert response.status_code == 400
+    # casefold expansion and NUL bytes are 400, never a DB-level 500
+    for name in ("ß" * 40, "a\x00b"):
+        response = client.post("/subjects", json={"name": name}, headers=headers(cid))
+        assert response.status_code == 400, repr(name)
 
 
 def test_duplicate_name_is_409_case_insensitive(client, cid, make_subject):

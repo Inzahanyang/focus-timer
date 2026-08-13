@@ -95,13 +95,22 @@ export default function BreathingPause({ onClose }) {
     });
   };
 
-  const pause = () =>
+  const pause = () => {
+    // Expiry beats the command, same as the main timer: pausing on the
+    // final frame completes instead of freezing a 1ms remainder.
+    const left = session.endAt - Date.now();
+    if (left <= 0) {
+      clearBreathingRecord();
+      setSession({ status: 'done' });
+      return;
+    }
     setSession((current) => ({
       ...current,
       status: 'paused',
-      remainingMs: Math.max(1, current.endAt - Date.now()),
+      remainingMs: left,
       endAt: null,
     }));
+  };
 
   const resume = () => {
     const resumeNow = Date.now();
@@ -193,6 +202,10 @@ export default function BreathingPause({ onClose }) {
         breathAmount={breathAmount}
       >
         <span className="stage-subject">BREATHE</span>
+        {/* Screen readers get the rhythm once, not every four seconds. */}
+        <span className="sr-only">
+          Four seconds in, hold for two, then six seconds out.
+        </span>
         <span className="stage-clock" role="timer">
           {formatClock(Math.ceil(remainingMs / 1000))}
         </span>

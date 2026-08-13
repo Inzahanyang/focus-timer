@@ -160,7 +160,14 @@ export default function TimerPage() {
         )}
         {state.outbox.some((item) => item.status === 'queued') && (
           <p className="field-note" role="status">
-            Saved on this device — syncing.
+            Saved on this device — syncing.{' '}
+            <button
+              type="button"
+              className="btn btn-quiet session-delete"
+              onClick={() => dispatch({ type: 'RETRY_SAVES' })}
+            >
+              Retry now
+            </button>
           </p>
         )}
 

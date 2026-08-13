@@ -46,7 +46,7 @@
 
 **D20. 중복 방어는 DB가 진실** — 과목 중복은 partial unique index(`archived_at IS NULL`)가 최종 보장, 라우트 pre-check는 친절한 에러용. IntegrityError → 409 변환. SQLite `PRAGMA foreign_keys=ON`.
 
-**D21. 프로덕션 빌드는 API URL 누락 시 즉시 실패** — `import.meta.env.PROD && !VITE_API_BASE_URL`이면 throw. 배포된 페이지가 방문자의 localhost를 호출하는 사고 방지.
+**D21. 프로덕션에서 API URL 누락은 이중 방어** — CI 워크플로가 변수 없으면 빌드를 중단하고(1차), 번들 자체도 로드 시 throw(2차). 배포된 페이지가 방문자의 localhost를 호출하는 사고 방지.
 
 ## 2026-08-12 (sessions 마일스톤 + 감사 반영)
 
@@ -62,13 +62,13 @@
 
 ## 2026-08-13 (Guided Break)
 
-**D31. 호흡은 과목이 아니라 휴식의 완성** — "Breath 과목이면 특별 동작" 방식(이름 기반 예외 처리)은 기각. 필수 5분 휴식에 호흡 가이드를 통합(Guided Break). 원칙: **Focus leaves a contour. Rest lets it breathe.** — 집중 등고선은 저장되어 지형이 되고, 호흡 등고선은 확대·축소 후 사라지며 기록을 남기지 않는다. 별도 호흡 세션 타입(`session_kind: guided_breath`)은 제출 후 v1.1에서 통계 분리와 함께 정식 설계.
+**D31. (D34로 부분 대체) 호흡은 과목이 아니라 휴식의 완성** — "Breath 과목이면 특별 동작" 방식(이름 기반 예외 처리)은 기각. 필수 5분 휴식에 호흡 가이드를 통합(Guided Break). 원칙: **Focus leaves a contour. Rest lets it breathe.** — 집중 등고선은 저장되어 지형이 되고, 호흡 등고선은 확대·축소 후 사라지며 기록을 남기지 않는다. 별도 호흡 세션 타입(`session_kind: guided_breath`)은 제출 후 v1.1에서 통계 분리와 함께 정식 설계.
 
 **D34. 휴식에서 호흡 가이드 완전 제거 (오너 결정)** — opt-in 버튼("Start breathing guide")조차 빼고 휴식은 항상 조용하게(정적 등고선 + "Let your attention widen." + Pause/Skip). 호흡은 오직 "Take a breathing pause"로만 — 집중 뒤 휴식은 그냥 쉼이고, 호흡은 사용자가 선택한 행위라는 경계를 명확히. breathState는 독립 호흡 전용이 됨.
 
-**D33. 자동 휴식은 유지, 자동 호흡은 폐지, 자발적 호흡 진입점 추가** — 리뷰 교정: "Hide할 수 있다"와 "원할 때 시작할 수 있다"는 다른 자율성이다. ① 휴식 기본값은 Quiet(정적 등고선), "Start/Stop breathing guide"가 문구와 움직임을 함께 켜고 끈다(버튼이 거짓말하지 않게). opt-in 선택은 기기별 영속. ② Timer 준비 화면에 "Take a breathing pause" — 과목·intention 없이 1/3/5분(기본 3분) 독립 호흡. 새로고침 복원, 부재 중 만료 시 완료 화면. ③ 독립 호흡은 /sessions에 저장하지 않고 통계·streak·차트에 반영하지 않는다. 기록이 필요해지면 v1.1에서 `session_kind: guided_breath`로 분리 설계.
+**D33. (①은 D34로 대체) 자동 휴식은 유지, 자동 호흡은 폐지, 자발적 호흡 진입점 추가** — 리뷰 교정: "Hide할 수 있다"와 "원할 때 시작할 수 있다"는 다른 자율성이다. ① 휴식 기본값은 Quiet(정적 등고선), "Start/Stop breathing guide"가 문구와 움직임을 함께 켜고 끈다(버튼이 거짓말하지 않게). opt-in 선택은 기기별 영속. ② Timer 준비 화면에 "Take a breathing pause" — 과목·intention 없이 1/3/5분(기본 3분) 독립 호흡. 새로고침 복원, 부재 중 만료 시 완료 화면. ③ 독립 호흡은 /sessions에 저장하지 않고 통계·streak·차트에 반영하지 않는다. 기록이 필요해지면 v1.1에서 `session_kind: guided_breath`로 분리 설계.
 
-**D32. 호흡 위상은 휴식 타이머와 같은 시간원에서 파생** — `elapsed = duration - (endAt - now)`의 나머지 연산으로 in(4s)/hold(2s)/out(6s) 위상 계산. 별도 시작시각·일시정지 부기 없음 → 일시정지 동결·새로고침 중간 복원·백그라운드 재동기화가 구조적으로 보장. 스케일은 파생값을 CSS transition(650ms)이 추적. Guided/Quiet 선택은 기기별 영속, reduced-motion은 스케일 제거(라벨은 유지). 스크린리더에는 위상 대신 고정 문구 유지(4초마다 읽어주는 소음 방지). 구 Relaxer에서 가져온 것: 시간 구조와 확대-정지-축소 경험. 버린 것: 원형 링·포인터·배경사진·클래스 토글 구현.
+**D32. (독립 호흡에만 적용) 호흡 위상은 해당 타이머와 같은 시간원에서 파생** — `elapsed = duration - (endAt - now)`의 나머지 연산으로 in(4s)/hold(2s)/out(6s) 위상 계산. 별도 시작시각·일시정지 부기 없음 → 일시정지 동결·새로고침 중간 복원·백그라운드 재동기화가 구조적으로 보장. 스케일은 파생값을 CSS transition(650ms)이 추적. Guided/Quiet 선택은 기기별 영속, reduced-motion은 스케일 제거(라벨은 유지). 스크린리더에는 위상 대신 고정 문구 유지(4초마다 읽어주는 소음 방지). 구 Relaxer에서 가져온 것: 시간 구조와 확대-정지-축소 경험. 버린 것: 원형 링·포인터·배경사진·클래스 토글 구현.
 
 ## 2026-08-12 (Codex 재검토 라운드 2 반영)
 

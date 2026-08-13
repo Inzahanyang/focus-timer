@@ -69,7 +69,7 @@ npm run dev
 
 ```bash
 cd backend && .venv/bin/pytest          # 백엔드
-cd frontend && npm test                 # 프론트엔드 (추가 예정)
+cd frontend && npm test                 # 프론트엔드 35개
 ```
 
 ## 문서

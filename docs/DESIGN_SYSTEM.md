@@ -86,7 +86,7 @@ CSS 변수 스왑으로 구현: `<html data-mode="paper|focus|break">`. 라우�
 화면/모드 전환   300–500ms
 집중 진행       시간과 정확히 비례하는 선형 진행 (이징 금지)
 완료 효과       1초 안팎, 절제
-휴식            매우 느린 확장·수축 (8s 주기)
+휴식            정적 등고선 (D34) — 호흡 모션은 독립 Guided Breathing에만
 ```
 
 - 반복 장식 애니메이션 금지. 집중 중 움직이는 것은 등고선 진행뿐.
@@ -99,7 +99,7 @@ CSS 변수 스왑으로 구현: `<html data-mode="paper|focus|break">`. 라우�
 - 시작: 선의 일부만 존재(◜) → 완료: 폐곡선(◯).
 - 일시정지: 진행 정지 + 선 투명도 하락 — 열린 틈 자체가 중단을 말한다. 텍스트는 기능만("Focus paused").
 - 내부에 아주 옅은 보조 등고선 1개(정적) — 지도 질감.
-- 휴식: 같은 링이 break 팔레트로 아주 느리게 확장·수축(reduced-motion 시 정지).
+- 휴식: break 팔레트의 정적 등고선 (D34). 확장·수축 호흡은 독립 Guided Breathing 전용.
 - 접근성: `role="progressbar"` + aria-valuemin/max/now, 시간은 별도 `role="timer"` 요소.
 
 ## 6. 화면 골격
