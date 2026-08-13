@@ -80,7 +80,7 @@ export default function BreathingPause({ onClose }) {
   const elapsedMs =
     running || paused ? session.durationS * 1000 - remainingMs : 0;
   const breath = breathState(elapsedMs);
-  const breathScale = prefersReducedMotion() ? undefined : breath.scale;
+  const breathAmount = prefersReducedMotion() ? undefined : breath.amount;
   const remainingFraction =
     running || paused ? remainingMs / (session.durationS * 1000) : 0;
 
@@ -190,7 +190,7 @@ export default function BreathingPause({ onClose }) {
           remainingFraction * 100
         )} percent`}
         valueNow={Math.round(remainingFraction * 100)}
-        breathScale={breathScale}
+        breathAmount={breathAmount}
       >
         <span className="stage-subject">BREATHE</span>
         <span className="stage-clock" role="timer">
@@ -200,7 +200,13 @@ export default function BreathingPause({ onClose }) {
           {paused ? (
             'Paused'
           ) : (
-            <span aria-hidden="true" className="breath-label">
+            // key remounts the span per phase so the fade re-runs —
+            // a soft crossfade between Breathe in / Hold / Breathe out
+            <span
+              key={breath.phase}
+              aria-hidden="true"
+              className="breath-label"
+            >
               {breath.label}
             </span>
           )}

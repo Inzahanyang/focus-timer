@@ -14,7 +14,7 @@ export default function ContourRing({
   label, // accessible meaning differs between focus and break
   valueNow,
   color, // subject color (CSS value); muted-mixed into the stroke
-  breathScale, // Guided Break: contour scale driven by the break clock
+  breathAmount, // 0..1 breathing inflation; layers respond with depth
   children,
 }) {
   const half = VIEW / 2;
@@ -44,20 +44,24 @@ export default function ContourRing({
     progressStyle.stroke = `color-mix(in oklab, ${color} 52%, var(--contour))`;
   }
 
+  // Layered breathing: the outer contour swells most, the inner ones
+  // follow smaller — terrain breathing, not a zooming circle. A faint
+  // energy cue (opacity + line weight) rises with the inhale.
+  const breathing = breathAmount != null;
+  const x = breathing ? Math.min(1, Math.max(0, breathAmount)) : 0;
+  const layerStyle = (amplitude) =>
+    breathing
+      ? { transform: `scale(${(1 + amplitude * x).toFixed(4)})` }
+      : undefined;
+
+  if (breathing) {
+    progressStyle.strokeWidth = 3 + 0.45 * x;
+  }
+
   return (
     <div className="stage">
       <svg
         className={`contour${paused ? ' is-paused' : ''}`}
-        style={
-          breathScale != null
-            ? {
-                transform: `scale(${breathScale})`,
-                // slightly longer than the repaint interval: the shape
-                // glides between derived values instead of stepping
-                transition: 'transform 650ms linear',
-              }
-            : undefined
-        }
         viewBox={`0 0 ${VIEW} ${VIEW}`}
         role="progressbar"
         aria-valuemin={0}
@@ -69,15 +73,33 @@ export default function ContourRing({
       >
         {/* Start the line at 12 o'clock. */}
         <g transform={`rotate(-90 ${half} ${half})`}>
-          <path className="contour-inner" d={inner} />
-          <path className="contour-inner contour-mid" d={mid} />
-          <path className="contour-track" d={outer} pathLength="1" />
-          <path
-            className="contour-progress"
-            d={outer}
-            pathLength="1"
-            style={progressStyle}
-          />
+          <g className="breath-layer" style={layerStyle(0.03)}>
+            <path className="contour-inner" d={inner} />
+          </g>
+          <g className="breath-layer" style={layerStyle(0.06)}>
+            <path className="contour-inner contour-mid" d={mid} />
+          </g>
+          <g
+            className="breath-layer"
+            style={
+              breathing
+                ? { ...layerStyle(0.09), opacity: 0.82 + 0.18 * x }
+                : undefined
+            }
+          >
+            <path
+              className="contour-track"
+              d={outer}
+              pathLength="1"
+              style={breathing ? { strokeWidth: 1.75 + 0.35 * x } : undefined}
+            />
+            <path
+              className="contour-progress"
+              d={outer}
+              pathLength="1"
+              style={progressStyle}
+            />
+          </g>
         </g>
       </svg>
       <div className="stage-center">{children}</div>

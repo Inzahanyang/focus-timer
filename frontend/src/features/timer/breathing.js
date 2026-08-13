@@ -12,9 +12,18 @@ const INHALE_MS = 4_000;
 const HOLD_MS = 2_000;
 const EXHALE_MS = 6_000; // longer exhale reads calmer than symmetric cycles
 
-const MAX_SCALE = 1.05;
+// Breathing must feel somatic, not decorative (design pass: guidance-
+// forward). The easing lives HERE in the math — the screen only chases
+// these derived values — so the inhale visibly swells early (ease-out),
+// the hold is truly still, and the exhale settles long and soft
+// (ease-in-out). `amount` is normalized 0..1; each contour layer applies
+// its own amplitude for depth.
 
-/** elapsedMs (>=0, any size) -> { phase, label, scale } */
+const easeOutQuad = (p) => p * (2 - p);
+const easeInOutQuad = (p) =>
+  p < 0.5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2;
+
+/** elapsedMs (>=0, any size) -> { phase, label, amount } */
 export function breathState(elapsedMs) {
   const safe = Number.isFinite(elapsedMs) && elapsedMs > 0 ? elapsedMs : 0;
   const t = safe % BREATH_CYCLE_MS;
@@ -23,17 +32,16 @@ export function breathState(elapsedMs) {
     return {
       phase: 'in',
       label: 'Breathe in',
-      scale: 1 + (MAX_SCALE - 1) * (t / INHALE_MS),
+      amount: easeOutQuad(t / INHALE_MS),
     };
   }
   if (t < INHALE_MS + HOLD_MS) {
-    return { phase: 'hold', label: 'Hold', scale: MAX_SCALE };
+    return { phase: 'hold', label: 'Hold', amount: 1 };
   }
   return {
     phase: 'out',
     label: 'Breathe out',
-    scale:
-      MAX_SCALE - (MAX_SCALE - 1) * ((t - INHALE_MS - HOLD_MS) / EXHALE_MS),
+    amount: 1 - easeInOutQuad((t - INHALE_MS - HOLD_MS) / EXHALE_MS),
   };
 }
 

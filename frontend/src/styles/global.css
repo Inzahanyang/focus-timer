@@ -420,9 +420,19 @@ input:focus-visible {
   opacity: 0.35;
 }
 
-/* break: the contour breathes on the break's own clock (Guided Break) —
-   the scale is derived in JS from elapsed time, so pausing freezes it
-   and refreshing restores mid-cycle. No decorative CSS loop needed. */
+/* breathing (standalone pause): each contour layer chases its derived
+   scale — the transition is slightly longer than the repaint interval so
+   the shape glides instead of stepping. Easing lives in the math. */
+.breath-layer {
+  transform-box: view-box;
+  transform-origin: center;
+  transition: transform 650ms linear, opacity 650ms linear;
+}
+
+.breath-layer .contour-track,
+.breath-layer .contour-progress {
+  transition: stroke-width 650ms linear, opacity var(--t-mode) ease;
+}
 
 .breath-label {
   display: inline-block;
