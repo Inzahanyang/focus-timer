@@ -18,3 +18,6 @@ backend/instance/
 # OS / editor
 .DS_Store
 *.log
+
+# handoff originals (assets are copied into frontend/src/assets)
+_handoff/

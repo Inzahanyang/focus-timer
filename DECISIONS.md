@@ -81,3 +81,17 @@
 **D25. 저장 스키마 v2, v1은 마이그레이션 없이 폐기** — 배포 전이고 실사용자가 없어(테스트 브라우저뿐) v1→v2 변환 코드를 넣지 않는다. **v2부터는 스키마 변경 시 마이그레이션 필수.** 같은 원칙으로 DB도 배포 전에는 재생성, 첫 배포 전에 Flask-Migrate 도입 여부 결정.
 
 **D26. 리듀서는 vitest로 고정** — 재검토마다 리듀서 엣지가 나와서 순수 함수 계층에 표 테스트 20개 도입(만료 경계, outbox 격리, anchor, reconcile). `npm test`.
+
+## 2026-08-13 (Steady Gaze)
+
+**D35. Steady Gaze는 연습이지 세션이 아니다** — 서버 저장·통계·streak 반영 없음(브리프 §2 하드 제약). localStorage 레코드(`focus-atlas.steady-gaze.v1`)는 오직 새로고침 복원용이며 완료·종료 시 삭제. 응시 지속시간을 측정·표시하지 않는다(엔듀런스 지표 금지). 설정(`…steady-gaze-settings.v1`)만 기기별 영속.
+
+**D36. settle/rest는 앰비언트도 무음** — 루프는 gaze(드론)·eyes_closed(어두운 루프)에만 배정. 준비와 여운은 소리 없이. 벨 매핑: →gaze 시작벨, →eyes_closed 전환벨, →complete 완료벨 — 라이브 전이에서만 1회(복원 시 중복 발성 없음).
+
+**D37. 오디오는 연습을 기다리게 하지 않는다** — BEGIN을 먼저 디스패치하고 unlockAudio()는 병렬로. AudioContext.resume()은 실제 사용자 활성화가 없으면 영원히 pending일 수 있어 600ms Promise.race로 감싼다. 오디오 실패는 조용한 연습으로 강등될 뿐 에러가 아니다.
+
+**D38. 백그라운드 탭의 flame play() 거부는 실패가 아니다** — 숨은 탭에서 복원되면 muted autoplay도 거부되는데, 이를 영구 실패(poster 고정)로 처리하면 탭에 돌아온 사용자가 정지 화면을 본다. visibilitychange에서 재시도하고, **가시 상태에서의 거부만** poster로 폴백. (QA에서 발견)
+
+**D39. flame 레이아웃은 휴리스틱이 아니라 계산** — `margin-top: 44vh`는 짧은 뷰포트(모바일 700px)에서 헤딩이 촛불과 겹쳤다. 비디오(1280×796)는 50vh 중앙·`min(300px, 60vw)` 폭이므로 UI 시작점을 `calc(50vh + min(300px, 60vw) * 0.32)`로 — 반높이비 0.311 + 여백. 모든 뷰포트에서 구조적으로 겹치지 않는다.
+
+**D40. 가이드 UI 페이드는 잔류 포커스에 지지 않는다** — 3초 무입력 페이드(opacity 0.06)가 "Begin practice" 클릭의 잔류 포커스(:focus-within) 때문에 무효화됐다. `:has(:focus-visible)`로 교체 — 키보드 항해는 UI를 붙잡고, 마우스 클릭 잔류 포커스는 페이드를 막지 못한다.

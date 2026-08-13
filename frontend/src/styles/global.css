@@ -857,6 +857,259 @@ input:focus-visible {
   color: var(--muted);
 }
 
+/* ---------- guided practices (ready screen) ---------- */
+
+.practices {
+  margin-top: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.practices-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------- steady gaze ---------- */
+
+.gaze-setup {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.gaze-copy {
+  margin: 6px 0 0;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--text);
+  max-width: 46ch;
+}
+
+.gaze-principle {
+  color: var(--muted);
+  margin-top: 14px;
+}
+
+.gaze-safety {
+  margin-top: 28px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  text-align: left;
+  max-width: 46ch;
+}
+
+.gaze-safety p {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.gaze-safety-inline {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 46ch;
+}
+
+.gaze-targets {
+  display: flex;
+  gap: 12px;
+  margin: 18px 0 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.gaze-target {
+  appearance: none;
+  cursor: pointer;
+  width: min(230px, 44vw);
+  padding: 16px 16px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color var(--t-fast) ease;
+}
+
+.gaze-target:hover {
+  border-color: var(--contour);
+}
+
+.gaze-target[aria-pressed='true'] {
+  border-color: var(--text);
+}
+
+.gaze-target strong {
+  font-size: 15px;
+}
+
+.gaze-target span {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.gaze-field {
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* timed stages: the screen becomes the practice room */
+.gaze-stage-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: calc(100vh - 170px);
+  padding-bottom: 6vh;
+}
+
+/* deep ink for gaze / eyes closed / rest — local to this screen, the
+   rest of the app keeps its paper mode */
+.gaze-stage-screen.is-dark {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  min-height: 100vh;
+  padding: 24px;
+  background: #0b0e13;
+  color: #d8d6cf;
+}
+
+.gaze-stage-screen.is-dark .gaze-copy {
+  color: #b9b7ae;
+}
+
+.gaze-stage-screen.is-dark .micro-label {
+  color: #7d8390;
+}
+
+.gaze-stage-screen.is-dark .btn {
+  background: rgba(232, 230, 223, 0.06);
+  border-color: rgba(232, 230, 223, 0.18);
+  color: #d8d6cf;
+}
+
+.gaze-stage-screen.is-dark .btn-primary {
+  background: #d8d6cf;
+  color: #0b0e13;
+}
+
+.gaze-stage-screen.is-dark .btn-quiet {
+  background: transparent;
+  border-color: transparent;
+  color: #7d8390;
+}
+
+.gaze-ui {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transition: opacity 1200ms ease;
+}
+
+/* during gaze the interface recedes; any input recalls it. Keyboard
+   navigation (:focus-visible) keeps it visible — a lingering mouse-click
+   focus from "Begin practice" must not defeat the fade. */
+.gaze-ui.is-idle {
+  opacity: 0.06;
+}
+
+.gaze-ui.is-idle:has(:focus-visible) {
+  opacity: 1;
+}
+
+.gaze-heading {
+  letter-spacing: 0.24em;
+}
+
+.gaze-clock {
+  font-size: clamp(30px, 5vw, 40px);
+  opacity: 0.85;
+}
+
+.gaze-subnote {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* virtual flame: one candle in wide dark margin; the video is the only
+   motion — halo and vignette are static */
+.flame-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.flame-media {
+  width: min(300px, 60vw);
+  border-radius: 8px;
+  display: block;
+}
+
+.flame-halo {
+  position: absolute;
+  width: min(520px, 90vw);
+  height: min(520px, 90vw);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(214, 160, 90, 0.1),
+    transparent 62%
+  );
+  pointer-events: none;
+}
+
+.flame-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 46%,
+    rgba(4, 5, 8, 0.72) 100%
+  );
+  pointer-events: none;
+}
+
+/* the flame sits behind the receding UI. The flame video (1280x796) is
+   centered at 50vh and min(300px, 60vw) wide, so its bottom edge sits at
+   50vh + width * 0.311 — start the UI just below that on every viewport
+   instead of guessing with a fixed vh (a 44vh heuristic overlapped the
+   flame on short/mobile screens). */
+.gaze-stage-screen.is-dark:has(.flame-stage) {
+  justify-content: flex-start;
+  overflow-y: auto;
+}
+
+.gaze-stage-screen .gaze-ui {
+  margin-top: calc(50vh + min(300px, 60vw) * 0.32);
+}
+
+.gaze-stage-screen:not(.is-dark) .gaze-ui,
+.gaze-stage-screen.is-dark:not(:has(.flame-stage)) .gaze-ui {
+  margin-top: 0;
+}
+
 /* ---------- demo ---------- */
 
 .demo-banner {

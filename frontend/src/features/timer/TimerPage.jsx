@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../../lib/apiClient';
 import { isDemoLoaded, seedDemoAtlas } from '../demo/demoApi';
 import { formatClock, subjectColorVar } from '../../lib/formatters';
+import PracticeActions from '../practice/PracticeActions';
+import SteadyGaze from '../practice/SteadyGaze';
+import { loadPracticeRecord } from '../practice/steadyGazeStorage';
 import { loadBreathingRecord } from './breathing';
 import BreathingPause from './BreathingPause';
 import ContourRing from './ContourRing';
@@ -22,9 +25,12 @@ export default function TimerPage() {
   const [pickerKey, setPickerKey] = useState(0);
   const [demoBusy, setDemoBusy] = useState(false);
   const [demoLoaded, setDemoLoaded] = useState(isDemoLoaded);
-  // A refresh-interrupted breathing pause reopens on its own.
+  // A refresh-interrupted practice reopens on its own. Only one guided
+  // practice can be open at a time; an active Steady Gaze record wins
+  // (both existing at once is not reachable through the UI).
+  const [gazeOpen, setGazeOpen] = useState(() => loadPracticeRecord() != null);
   const [breathingOpen, setBreathingOpen] = useState(
-    () => loadBreathingRecord() != null
+    () => loadPracticeRecord() == null && loadBreathingRecord() != null
   );
 
   useEffect(() => {
@@ -114,6 +120,9 @@ export default function TimerPage() {
 
   /* ---------- ready: the question, not a clock ---------- */
   if (ready) {
+    if (gazeOpen) {
+      return <SteadyGaze onClose={() => setGazeOpen(false)} />;
+    }
     if (breathingOpen) {
       return <BreathingPause onClose={() => setBreathingOpen(false)} />;
     }
@@ -182,14 +191,11 @@ export default function TimerPage() {
           </button>
         </div>
 
-        {/* On-demand breathing: no subject, no saving, whenever wanted. */}
-        <button
-          type="button"
-          className="btn btn-quiet demo-entry"
-          onClick={() => setBreathingOpen(true)}
-        >
-          Take a breathing pause
-        </button>
+        {/* Guided practices: user-initiated, subject-free, never saved. */}
+        <PracticeActions
+          onBreathing={() => setBreathingOpen(true)}
+          onSteadyGaze={() => setGazeOpen(true)}
+        />
 
         {/* Reviewer path — one quiet line, always reachable from any state,
             always plainly labeled, never disguised. Creating a subject
