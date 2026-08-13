@@ -420,18 +420,18 @@ input:focus-visible {
   opacity: 0.35;
 }
 
-/* break: the terrain breathes — very slow, disabled under reduced motion */
-html[data-mode='break'] .contour {
-  animation: breathe 8s ease-in-out infinite;
+/* break: the contour breathes on the break's own clock (Guided Break) —
+   the scale is derived in JS from elapsed time, so pausing freezes it
+   and refreshing restores mid-cycle. No decorative CSS loop needed. */
+
+.breath-label {
+  display: inline-block;
+  animation: breath-label-in 500ms ease both;
 }
 
-@keyframes breathe {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.045);
+@keyframes breath-label-in {
+  from {
+    opacity: 0;
   }
 }
 
