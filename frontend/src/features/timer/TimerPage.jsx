@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { isDemoLoaded, seedDemoAtlas } from '../demo/demoApi';
 import { formatClock, subjectColorVar } from '../../lib/formatters';
-import { breathState, isGuideEnabled, setGuideEnabled } from './breathing';
+import {
+  breathState,
+  isGuideEnabled,
+  loadBreathingRecord,
+  setGuideEnabled,
+} from './breathing';
+import BreathingPause from './BreathingPause';
 import ContourRing from './ContourRing';
 import SubjectPicker from './SubjectPicker';
 import { FOCUS_SECONDS, isReady } from './timerMachine';
@@ -25,6 +31,10 @@ export default function TimerPage() {
   const [pickerKey, setPickerKey] = useState(0);
   const [demoBusy, setDemoBusy] = useState(false);
   const [demoLoaded, setDemoLoaded] = useState(isDemoLoaded);
+  // A refresh-interrupted breathing pause reopens on its own.
+  const [breathingOpen, setBreathingOpen] = useState(
+    () => loadBreathingRecord() != null
+  );
 
   useEffect(() => {
     const onChange = () => setDemoLoaded(isDemoLoaded());
@@ -83,6 +93,9 @@ export default function TimerPage() {
 
   /* ---------- ready: the question, not a clock ---------- */
   if (ready) {
+    if (breathingOpen) {
+      return <BreathingPause onClose={() => setBreathingOpen(false)} />;
+    }
     return (
       <div className="timer-page">
         <h1 className="timer-question">What will receive your attention?</h1>
@@ -141,6 +154,15 @@ export default function TimerPage() {
           </button>
         </div>
 
+        {/* On-demand breathing: no subject, no saving, whenever wanted. */}
+        <button
+          type="button"
+          className="btn btn-quiet demo-entry"
+          onClick={() => setBreathingOpen(true)}
+        >
+          Take a breathing pause
+        </button>
+
         {/* Reviewer path — one quiet line, always reachable from any state,
             always plainly labeled, never disguised. Creating a subject
             first must not strand the reviewer (found by the owner). */}
@@ -195,7 +217,10 @@ export default function TimerPage() {
     : 0;
   const breath = inBreak ? breathState(breakElapsedMs) : null;
   const reducedMotion = prefersReducedMotion();
-  const breathScale = inBreak && !reducedMotion ? breath.scale : undefined;
+  // Opt-in: the break contour only breathes once the user starts the
+  // guide. Quiet is genuinely still (D33).
+  const breathScale =
+    inBreak && guided && !reducedMotion ? breath.scale : undefined;
 
   const toggleGuide = () => {
     setGuided((current) => {
@@ -291,7 +316,8 @@ export default function TimerPage() {
           className="btn btn-quiet demo-entry"
           onClick={toggleGuide}
         >
-          {guided ? 'Hide breathing guide' : 'Show breathing guide'}
+          {/* Honest labels: Stop stops the words AND the motion. */}
+          {guided ? 'Stop breathing guide' : 'Start breathing guide'}
         </button>
       )}
 
