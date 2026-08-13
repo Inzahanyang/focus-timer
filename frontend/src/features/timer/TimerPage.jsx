@@ -1,21 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { isDemoLoaded, seedDemoAtlas } from '../demo/demoApi';
 import { formatClock, subjectColorVar } from '../../lib/formatters';
-import {
-  breathState,
-  isGuideEnabled,
-  loadBreathingRecord,
-  setGuideEnabled,
-} from './breathing';
+import { loadBreathingRecord } from './breathing';
 import BreathingPause from './BreathingPause';
 import ContourRing from './ContourRing';
 import SubjectPicker from './SubjectPicker';
 import { FOCUS_SECONDS, isReady } from './timerMachine';
 import { useTimer } from './useTimer';
-
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const NOTICE_COPY = {
   reset: 'Session cleared. Begin again when ready.',
@@ -24,9 +15,8 @@ const NOTICE_COPY = {
 };
 
 export default function TimerPage() {
-  const { state, now, remaining, progress, dispatch } = useTimer();
+  const { state, remaining, progress, dispatch } = useTimer();
   const { phase } = state;
-  const [guided, setGuided] = useState(isGuideEnabled);
 
   const [pickerKey, setPickerKey] = useState(0);
   const [demoBusy, setDemoBusy] = useState(false);
@@ -206,29 +196,9 @@ export default function TimerPage() {
     ? `Break time remaining, ${Math.round((1 - progress) * 100)} percent`
     : `Focus progress, ${Math.round(progress * 100)} percent complete`;
 
-  // Guided Break: breath phase derived from the break's own clock — the
-  // same time source as the countdown, so pause/refresh/background all
-  // stay in sync for free ("Focus leaves a contour. Rest lets it breathe.")
-  const breakElapsedMs = inBreak
-    ? state.durationSeconds * 1000 -
-      (phase === 'running_break'
-        ? Math.max(0, state.endAt - now)
-        : state.remainingMs)
-    : 0;
-  const breath = inBreak ? breathState(breakElapsedMs) : null;
-  const reducedMotion = prefersReducedMotion();
-  // Opt-in: the break contour only breathes once the user starts the
-  // guide. Quiet is genuinely still (D33).
-  const breathScale =
-    inBreak && guided && !reducedMotion ? breath.scale : undefined;
-
-  const toggleGuide = () => {
-    setGuided((current) => {
-      setGuideEnabled(!current);
-      return !current;
-    });
-  };
-
+  // The break is always quiet (D34): a still contour and one line of
+  // copy. Guided breathing lives solely behind "Take a breathing pause" —
+  // something the user chooses, never something the app starts.
   return (
     <div className="timer-page">
       <ContourRing
@@ -241,7 +211,6 @@ export default function TimerPage() {
         label={ringLabel}
         valueNow={Math.round(ringProgress * 100)}
         color={inBreak ? null : subjectColorVar(state.subjectId || 1)}
-        breathScale={breathScale}
       >
         <span className="stage-subject">
           {inBreak ? 'BREAK' : state.subjectName}
@@ -249,22 +218,10 @@ export default function TimerPage() {
         <span className="stage-clock" role="timer">
           {formatClock(remaining)}
         </span>
-        {/* The breath label is visual pacing, not chatter — screen readers
-            keep the calm one-line break description instead. */}
         <span className="stage-status" role="status">
           {phase === 'paused_focus' && 'Focus paused'}
           {phase === 'paused_break' && 'Break paused'}
-          {phase === 'running_break' &&
-            (guided ? (
-              <>
-                <span aria-hidden="true" className="breath-label">
-                  {breath.label}
-                </span>
-                <span className="sr-only">Let your attention widen.</span>
-              </>
-            ) : (
-              'Let your attention widen.'
-            ))}
+          {phase === 'running_break' && 'Let your attention widen.'}
         </span>
         {inFocus && state.intention && (
           <span className="stage-intention">{state.intention}</span>
@@ -310,16 +267,6 @@ export default function TimerPage() {
         )}
       </div>
 
-      {inBreak && (
-        <button
-          type="button"
-          className="btn btn-quiet demo-entry"
-          onClick={toggleGuide}
-        >
-          {/* Honest labels: Stop stops the words AND the motion. */}
-          {guided ? 'Stop breathing guide' : 'Start breathing guide'}
-        </button>
-      )}
 
       <div className="sr-only" aria-live="polite">
         {announcement}

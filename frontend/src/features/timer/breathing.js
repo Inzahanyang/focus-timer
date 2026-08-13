@@ -3,10 +3,9 @@
 // discipline as the timer — so pausing freezes the breath, refreshing
 // restores mid-cycle, and background tabs resync without bookkeeping.
 //
-// Two consumers share this module (D33):
-//   Guided Break        — opt-in guide inside the automatic 5-minute break
-//   Standalone breathing— "Take a breathing pause": user-initiated,
-//                          subject-free, never saved as a focus session
+// Sole consumer (D34): standalone breathing behind "Take a breathing
+// pause" — user-initiated, subject-free, never saved as a focus session.
+// The automatic break stays quiet; the app never breathes at the user.
 
 export const BREATH_CYCLE_MS = 12_000;
 const INHALE_MS = 4_000;
@@ -36,27 +35,6 @@ export function breathState(elapsedMs) {
     scale:
       MAX_SCALE - (MAX_SCALE - 1) * ((t - INHALE_MS - HOLD_MS) / EXHALE_MS),
   };
-}
-
-// Break-guide preference. OPT-IN: the automatic break defaults to Quiet —
-// the user chooses to breathe; the app never starts it for them (D33).
-const PREF_KEY = 'focus-atlas.break-guide.v1';
-
-export function isGuideEnabled() {
-  try {
-    return localStorage.getItem(PREF_KEY) === 'guided';
-  } catch {
-    return false;
-  }
-}
-
-export function setGuideEnabled(enabled) {
-  try {
-    if (enabled) localStorage.setItem(PREF_KEY, 'guided');
-    else localStorage.removeItem(PREF_KEY);
-  } catch {
-    /* ignore */
-  }
 }
 
 // ---------------------------------------------------------------------
