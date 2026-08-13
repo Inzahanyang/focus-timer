@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { BREATH_CYCLE_MS, breathState } from './breathing';
+import { beforeAll, describe, expect, it } from 'vitest';
+import {
+  BREATH_CYCLE_MS,
+  breathState,
+  isGuideEnabled,
+  setGuideEnabled,
+} from './breathing';
 
 describe('breathState', () => {
   it('walks in -> hold -> out across one cycle', () => {
@@ -39,5 +44,29 @@ describe('breathState', () => {
     const a = breathState(7_300);
     const b = breathState(7_300);
     expect(a).toEqual(b);
+  });
+});
+
+describe('break guide preference (opt-in, D33)', () => {
+  beforeAll(() => {
+    // node test env has no localStorage — a Map-backed stand-in suffices
+    const store = new Map();
+    globalThis.localStorage = {
+      getItem: (key) => (store.has(key) ? store.get(key) : null),
+      setItem: (key, value) => store.set(key, String(value)),
+      removeItem: (key) => store.delete(key),
+    };
+  });
+
+  it('defaults to Quiet — the app never starts breathing for the user', () => {
+    localStorage.removeItem('focus-atlas.break-guide.v1');
+    expect(isGuideEnabled()).toBe(false);
+  });
+
+  it('round-trips the explicit opt-in', () => {
+    setGuideEnabled(true);
+    expect(isGuideEnabled()).toBe(true);
+    setGuideEnabled(false);
+    expect(isGuideEnabled()).toBe(false);
   });
 });
