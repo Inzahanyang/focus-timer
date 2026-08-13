@@ -144,6 +144,33 @@ export default function SteadyGaze({ onClose }) {
     };
   }, [stage, status]);
 
+  /* ---------- fullscreen: the practice owns the whole screen ---------- */
+  // Entered on Begin/Resume (user gestures — required by the API) and
+  // left when the user leaves the practice. ESC is the browser's own
+  // exit and never touches the practice state. A refusal is silent:
+  // fullscreen is atmosphere, not a requirement.
+  const enterFullscreen = () => {
+    if (document.fullscreenElement) return;
+    const el = document.documentElement;
+    const request = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!request) return;
+    try {
+      const attempt = request.call(el, { navigationUI: 'hide' });
+      if (attempt && attempt.catch) attempt.catch(() => {});
+    } catch {
+      /* declined */
+    }
+  };
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  // leaving the practice always returns the browser chrome
+  useEffect(() => () => exitFullscreen(), []);
+
   /* ---------- actions ---------- */
   const configure = (patch) => dispatch({ type: 'CONFIGURE', ...patch });
 
@@ -159,6 +186,7 @@ export default function SteadyGaze({ onClose }) {
     // The practice starts NOW — audio unlocks in parallel and may fail
     // quietly (autoplay policy); it never gates the timer.
     dispatch({ type: 'BEGIN', now: startNow });
+    enterFullscreen();
     if (state.soundMode !== 'silent') {
       unlockAudio().then((unlocked) => {
         setSoundBlocked(!unlocked);
@@ -191,6 +219,8 @@ export default function SteadyGaze({ onClose }) {
     setNow(resumeNow);
     dispatch({ type: 'RESUME', now: resumeNow });
     resumeAudio();
+    // covers the refresh-restore path, where Begin never ran
+    enterFullscreen();
   };
 
   const end = () => {
