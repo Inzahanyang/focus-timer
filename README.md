@@ -5,11 +5,50 @@
 
 한 번의 집중(25분)은 하나의 등고선(contour)으로 기록되고, 등고선이 쌓여 개인의 집중 지형이 됩니다.
 
+**심사자용 2분 경험**: 접속 → `Explore a sample atlas` → `Try a 10-second demo session` → 완료 오버레이 → 자동 휴식 → Dashboard에서 방금 세션이 지형에 추가된 것 확인. (10초 데모는 실제 타이머와 같은 상태머신·같은 API를 씁니다)
+
 ## 스택
 
 - **Frontend**: React (Vite) · React Router · Recharts → GitHub Pages
 - **Backend**: Python Flask · SQLAlchemy → Railway
 - **DB**: SQLite (로컬) / PostgreSQL (배포, `DATABASE_URL`)
+
+## 과제 요구사항 체크리스트
+
+- **Timer**: 25분 시작 ✓ 일시정지/재개 ✓ 리셋 ✓ 시각 진행 지표(등고선) ✓ 시작 전 과목 선택 ✓ 과목 생성·관리 ✓ 완료 자동 저장 ✓ 완료 알림(시각) ✓ 5분 휴식 자동 시작 ✓
+- **History**: 전체 목록 ✓ 과목·시간·날짜 표시 ✓ 과목 필터 ✓ 주/월/전체 필터 ✓ 삭제 ✓
+- **Dashboard**: 연속 일수 ✓ 전체 집중 시간 ✓ 이번 주 세션 수 ✓ 과목별 막대 차트 ✓ 요일별(월~일) 막대 차트 ✓ — 전부 서버 계산
+- **API 7개**: subjects GET/POST/DELETE · sessions GET/POST/DELETE · stats GET ✓
+- **배포**: GitHub Pages(React Router) ✓ Railway(gunicorn + PostgreSQL) ✓
+
+## 아키텍처
+
+```
+브라우저 (React, HashRouter)
+  TimerProvider ─ 라우트 위에서 타이머 소유 (이동해도 안 죽음)
+  │  timerMachine: 순수 리듀서, 시간 진실 = endAt 파생값
+  │  outbox: completionId 멱등 키로 저장 재시도
+  ├─ Timer / History / Dashboard (Recharts 2 + 릿지라인 지형 SVG)
+  └─ X-Client-ID · X-Timezone 헤더 (익명 기기 격리)
+        │ HTTPS + CORS
+Flask (Railway) ── PostgreSQL
+  identity → 라우트(subjects/sessions/stats/demo) → 서비스(stats/insight)
+  모든 쿼리 client_id 스코프 · 시간 저장 UTC · 경계 계산은 클라이언트 시간대
+```
+
+**타이머 신뢰성**: 남은 시간은 `ceil((endAt − now)/1000)`로 매번 파생 — interval은 화면 갱신용일 뿐이라 새로고침·백그라운드 스로틀링에도 안 틀어집니다. 완료는 프론트 completionId + 백엔드 `(client_id, idempotency_key)` unique + 요청 fingerprint로 정확히 1회 저장되고, 실패 시 아웃박스에 남아 재시도됩니다.
+
+**데이터 격리**: 로그인 없이 `crypto.randomUUID()`를 기기에 저장하고 모든 요청에 `X-Client-ID`로 전송 — 공개 배포에서 방문자끼리 데이터가 섞이지 않습니다 (계정 시스템이 아닌 격리 레이어).
+
+## API
+
+| Method | Endpoint | 설명 |
+|---|---|---|
+| GET/POST/DELETE | `/subjects`, `/subjects/<id>` | 과목 (삭제는 soft delete — 과거 기록 보존) |
+| GET/POST/DELETE | `/sessions`, `/sessions/<id>` | 세션 (`?subject_id=`, `?range=week\|month\|all`, POST는 Idempotency-Key 지원) |
+| GET | `/stats` | streak · total_hours · sessions_this_week · by_subject · by_weekday (+insights 확장) |
+| POST/DELETE | `/demo/seed`, `/demo` | 샘플 아틀라스 시드/제거 (is_demo만 건드림) |
+| GET | `/health` | DB 포함 상태 확인 |
 
 ## 로컬 실행
 
