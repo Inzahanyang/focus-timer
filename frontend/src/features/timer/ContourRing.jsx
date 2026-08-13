@@ -14,6 +14,7 @@ export default function ContourRing({
   label, // accessible meaning differs between focus and break
   valueNow,
   color, // subject color (CSS value); muted-mixed into the stroke
+  breathScale, // Guided Break: contour scale driven by the break clock
   children,
 }) {
   const half = VIEW / 2;
@@ -47,6 +48,16 @@ export default function ContourRing({
     <div className="stage">
       <svg
         className={`contour${paused ? ' is-paused' : ''}`}
+        style={
+          breathScale != null
+            ? {
+                transform: `scale(${breathScale})`,
+                // slightly longer than the repaint interval: the shape
+                // glides between derived values instead of stepping
+                transition: 'transform 650ms linear',
+              }
+            : undefined
+        }
         viewBox={`0 0 ${VIEW} ${VIEW}`}
         role="progressbar"
         aria-valuemin={0}

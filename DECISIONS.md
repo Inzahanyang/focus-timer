@@ -60,6 +60,12 @@
 
 **미해결**: 없음 (이전 미해결 3건은 D27/D28/D30으로 종결). Codex 감사 원문: 스크래치패드 `codex-audit-*.md`.
 
+## 2026-08-13 (Guided Break)
+
+**D31. 호흡은 과목이 아니라 휴식의 완성** — "Breath 과목이면 특별 동작" 방식(이름 기반 예외 처리)은 기각. 필수 5분 휴식에 호흡 가이드를 통합(Guided Break). 원칙: **Focus leaves a contour. Rest lets it breathe.** — 집중 등고선은 저장되어 지형이 되고, 호흡 등고선은 확대·축소 후 사라지며 기록을 남기지 않는다. 별도 호흡 세션 타입(`session_kind: guided_breath`)은 제출 후 v1.1에서 통계 분리와 함께 정식 설계.
+
+**D32. 호흡 위상은 휴식 타이머와 같은 시간원에서 파생** — `elapsed = duration - (endAt - now)`의 나머지 연산으로 in(4s)/hold(2s)/out(6s) 위상 계산. 별도 시작시각·일시정지 부기 없음 → 일시정지 동결·새로고침 중간 복원·백그라운드 재동기화가 구조적으로 보장. 스케일은 파생값을 CSS transition(650ms)이 추적. Guided/Quiet 선택은 기기별 영속, reduced-motion은 스케일 제거(라벨은 유지). 스크린리더에는 위상 대신 고정 문구 유지(4초마다 읽어주는 소음 방지). 구 Relaxer에서 가져온 것: 시간 구조와 확대-정지-축소 경험. 버린 것: 원형 링·포인터·배경사진·클래스 토글 구현.
+
 ## 2026-08-12 (Codex 재검토 라운드 2 반영)
 
 **D22. 저장은 completionId로 식별되는 영속 outbox** — 단일 save 슬롯은 이전 저장이 미결인 채 다음 세션이 완료되면 유실됐다(재검토 BLOCKER). outbox 배열 + SAVE_SUCCEEDED/FAILED에 completionId 포함 + in-flight ID 추적. 재시도는 로드 시·online 이벤트·RETRY_SAVES로.
