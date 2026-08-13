@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { api } from '../../lib/apiClient';
 import { isDemoLoaded, seedDemoAtlas } from '../demo/demoApi';
 import { formatClock, subjectColorVar } from '../../lib/formatters';
 import { loadBreathingRecord } from './breathing';
@@ -39,6 +40,36 @@ export default function TimerPage() {
     try {
       await seedDemoAtlas();
       setPickerKey((k) => k + 1); // picker refetches the seeded subjects
+    } finally {
+      setDemoBusy(false);
+    }
+  };
+
+  // The demo session is a reviewer tool: one click, no prerequisites.
+  // It pins the seeded "Work" subject (first subject as fallback) so it
+  // never waits on a selection.
+  const startDemoSession = async () => {
+    if (demoBusy) return;
+    setDemoBusy(true);
+    try {
+      const subjects = await api('/subjects');
+      const subject =
+        subjects.find((s) => s.name.trim().toLowerCase() === 'work') ||
+        subjects[0];
+      if (!subject) return; // no subjects at all — picker already explains
+      dispatch({
+        type: 'SELECT_SUBJECT',
+        subjectId: subject.id,
+        subjectName: subject.name,
+      });
+      dispatch({
+        type: 'START',
+        now: Date.now(),
+        durationSeconds: 10,
+        completionId: crypto.randomUUID(),
+      });
+    } catch {
+      // server unreachable — the subject picker surfaces the error state
     } finally {
       setDemoBusy(false);
     }
@@ -160,15 +191,8 @@ export default function TimerPage() {
           <button
             type="button"
             className="btn btn-quiet demo-entry"
-            disabled={state.subjectId == null}
-            onClick={() =>
-              dispatch({
-                type: 'START',
-                now: Date.now(),
-                durationSeconds: 10,
-                completionId: crypto.randomUUID(),
-              })
-            }
+            disabled={demoBusy}
+            onClick={startDemoSession}
           >
             Try a 10-second demo session
           </button>
