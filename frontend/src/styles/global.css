@@ -1099,6 +1099,9 @@ input:focus-visible {
 .gaze-stage-screen.is-dark:has(.flame-stage) {
   justify-content: flex-start;
   overflow-y: auto;
+  /* the flame video's margins are pure black — the screen behind it must
+     match exactly or the video rectangle shows against the ink #0b0e13 */
+  background: #000;
 }
 
 .gaze-stage-screen .gaze-ui {
